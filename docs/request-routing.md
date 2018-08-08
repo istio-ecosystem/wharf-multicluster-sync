@@ -4,9 +4,9 @@
 How can we achieve the Request Routing functionality
 as described in https://istio.io/docs/tasks/traffic-management/request-routing/ ?
 
-First, let's look from the point of view of the providing service.  The operator of the _Donar
+First, let's look from the point of view of the providing service.  The operator of the _Donor
 Cluster_ *cluster-b* wishes to
-expose the *Reviews* service to remote cluster *cluster-a*.  So she writes a _ServiceExpositionPolicy_:
+expose the *Reviews* service to remote cluster *cluster-a*.  She writes a _ServiceExpositionPolicy_:
 
 ```
 apiVersion: multicluster.istio.io/v1alpha1
@@ -65,7 +65,8 @@ even the single user "jason" from the _virtual-service-reviews-test-v2.yaml_ exa
 to use v2.
 
 If the operator of cluster-a and cluster-b are part of the same team it is easy to have
-them perform the same operations as before and apply _virtual-service-all-v1.yaml_ again.
+them perform the same operations as before and apply _virtual-service-all-v1.yaml_ again
+upon the donor cluster.
 However, if this problem is discovered by the acceptor cluster and the donor cluster
 team is unresponsive there is no way to fix this with the steps we have taken so far because
 the labels are not exposed and rules applied in the acceptor cluster cannot control routing.
@@ -75,22 +76,22 @@ To provide some control for the acceptor cluster we introduce the best practice 
 the donor operator creates named aliases:
 
 ```
-# This is just virtual-service-all-v1.yaml with a different name and hosts
+# "reviews-v1" is just virtual-service-all-v1.yaml with a different name and hosts
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: details-v1
+  name: reviews-v1
   ...
 spec:
   hosts:
-  - details-v1
+  - reviews-v1
   http:
   - route:
     - destination:
-        host: details
+        host: reviews
         subset: v1
 ---
-# This is just virtual-service-reviews-test-v2.yaml with a different name and hosts
+# "reviews-test" is just virtual-service-reviews-test-v2.yaml with a different name and hosts
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
@@ -112,17 +113,6 @@ spec:
     - destination:
         host: reviews
         subset: v1
----
-apiVersion: multicluster.istio.io/v1alpha1
-kind: ServiceExpositionPolicy
-metadata:
-  name: reviews-sep
-  namespace: default
-spec:
-  exposed:
-  - name: reviews
-    clusters:
-    - cluster-a
 ---
 apiVersion: multicluster.istio.io/v1alpha1
 kind: ServiceExpositionPolicy
@@ -165,7 +155,7 @@ spec:
       alias: reviews
 ```
 
-This says to create in the Acceptor cluster a Service and/or VirtualService "reviews"
+This RemoteServiceBinding creates in the Acceptor cluster a Service and/or VirtualService "reviews"
 but that actually points to the reviews-v1 service on cluster-b.  This allows the
-operator of cluster-a to "roll back" without needing permission or assistance from the operator
-of cluster-b.
+operator of cluster-a to "roll back" without needing permission or assistance from the Donor operator
+of cluster-b, provided the Donor exposed a VirtualService with the needed request routing.
