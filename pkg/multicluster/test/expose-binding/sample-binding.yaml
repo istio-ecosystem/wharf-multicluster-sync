@@ -1,0 +1,13 @@
+# From https://github.ibm.com/istio-research/multicluster-roadmap/issues/4
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  name: sample1
+  namespace: mynamespace
+spec:
+  remote:
+  - cluster: clusterC
+    services:
+    - name: FooA
+      alias: remoteFooA
+      namespace: my-remote

@@ -1,0 +1,12 @@
+# Based on https://kubernetes.io/docs/concepts/services-networking/service/#multi-port-services
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: my-service
+spec:
+  exposed:
+  - name: my-service
+    ports:
+    - 80 # Required, because without this it would be ambiguous
+    clusters:
+    - acceptor-cluster-1

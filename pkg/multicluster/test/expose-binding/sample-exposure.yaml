@@ -1,0 +1,14 @@
+# From https://github.ibm.com/istio-research/multicluster-roadmap/issues/4
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: sample1
+  namespace: mynamespace
+spec:
+  exposed:
+  - name: ServiceA
+    alias: FooA
+    subset: v1
+    clusters:
+    - clusterA
+    - clusterB

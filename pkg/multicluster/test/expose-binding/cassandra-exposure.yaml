@@ -1,0 +1,35 @@
+# TODO: How do I expose ports?  I want to
+# expose 7199 to my monitoring cluster
+# and 9042 and 9160 to cluster-a?
+# Cassandra offers 
+# 22 SSH
+# 7000 inter-node Cassandra cluster
+# 7001 inter-node Cassandra cluster (SSL)
+# 7199 JMX
+# 9042 Client
+# 9160 Thrift Client
+# 9142 SSL
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: cassandra
+spec:
+  exposed:
+  - name: cassandra
+    ports:
+    - 7199
+    clusters:
+    - acceptor-cluster-1  # Monitoring
+---
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: cassandra
+spec:
+  exposed:
+  - name: cassandra
+    ports:
+    - 9042
+    - 9160
+    clusters:
+    - acceptor-cluster-2  # Front end tier

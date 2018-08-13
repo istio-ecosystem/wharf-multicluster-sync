@@ -1,0 +1,13 @@
+# Consume ratings
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratings
+  labels:
+    app: ratings
+  annotations:
+    multicluster.istio.io/donor-cluster: "donor-cluster"
+spec:
+  ports:
+  - port: 9080
+    name: http

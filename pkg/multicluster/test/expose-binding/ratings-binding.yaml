@@ -1,0 +1,10 @@
+# Consume ratings
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  name: ratings
+spec:
+  remote:
+  - cluster: donor-cluster
+    services:
+    - name: ratings
