@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package istio.multicluster.v1alpha1;
+
+option go_package = "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1";
+
+// `RemoteServiceBinding` describes an the remote clusters that the local
+// cluster can access along with the remote services exposed by those remote
+// clusters. The information in this model allows binding a remote service for
+// the use within local mesh.
+//
+// The following example has a remote service FooA from clusterC mapped into a
+// local service called `remoteFooA` within the `istio-remote` namespace.
+// Another remote service `FooB` from clusterD is available by its original
+// remote name and in the default namespace.
+//
+// ```yaml
+// apiVersion: multicluster.istio.io/v1alpha1
+// kind: RemoteServiceBinding
+// metadata:
+//   name: sample1
+//   namespace: mynamespace
+// spec:
+//   remote:
+//   - cluster: clusterC
+//     services:
+//     - name: FooA
+//       alias: remoteFooA
+//       namespace: istio-remote
+//   - cluster: clusterD
+//     services:
+//     - name: FooB
+// ```
+message RemoteServiceBinding {
+
+  // Each remote cluster has an entry in the `RemoteServiceBinding`. As cluster
+  // IDs are unique we don't expect two entries with the same name in a single
+  // binding resource.
+  message RemoteCluster {
+
+    // REQUIRED: The remote cluster ID (aka donor cluster).
+    string cluster = 1;
+
+    // Each exposed service by the donor cluster has a `RemoteService` entry.
+    message RemoteService {
+      
+      // REQUIRED: The name of the exposed remote service.
+      string name = 1;
+
+      // This is an alias that can be used for the local name of the remote
+      // service. It allows the operator to use a custom service name which
+      // may not match the remote name. This is an optional field. If not
+      // specified, the local binded service name will be named like the
+      // remote service name.
+      string alias = 2;
+
+      // A destination namespace where the binded service will be added to.
+      string namespace = 3;
+
+    };
+        
+    // A list of remote service from the donor cluster to be binded into local
+    // services.
+    repeated RemoteService services = 2;
+
+  };
+
+  // REQUIRED: One or more remote (donor) clusters that provides remote
+  // services to be used by local cluster. It is a list of cluster IDs and the
+  // remote service from each cluster that will be binded to local mesh
+  // services.
+  repeated RemoteCluster remote = 1;
+}

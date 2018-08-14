@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+// Package holds protos for the Istio Multi-cluster configuration model
+package istio.multicluster.v1alpha1;
+
+option go_package = "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1";
+
+// `ServiceExpositionPolicy` describes an exposition policy for services
+// available on the cluster where the policy is deployed. The cluster or
+// mesh operator creates this policy object to selectively choose the specific
+// service to be available to remote cluster. Each entry for exposed service is
+// also accompanied with a list of cluster IDs that can access it. This ensures
+// that only identified clusters can access the exposed services and only the
+// services selected to be exposed.
+//
+// The following example exposes v1 of ServiceA from the cluster where it is
+// deployed as service FooA to two remote clusters with IDs `clusterA` and
+// `clusterB`.
+//
+// ```yaml
+// apiVersion: multicluster.istio.io/v1alpha1
+// kind: ServiceExpositionPolicy
+// metadata:
+//   name: sample1
+//   namespace: mynamespace
+// spec:
+//   exposed:
+//   - name: ServiceA
+//     alias: FooA
+//     subset: v1
+//     clusters:
+//     - clusterA
+//     - clusterB
+// ```
+message ServiceExpositionPolicy {
+
+  // A single exposed service policy holds any information necessary for the
+  // configuration of both acceptor and donator clusters.
+  message ExposedService {
+
+    // REQUIRED: The name of the service to be exposed.
+    string name = 1;
+
+    // This is an alias that can be used for the exposed name of the service.
+    // It allows the operator to hide names of in-cluster services and choose
+    // descriptive names that acceptor clusters operators may find them more
+    // informative.
+    // This is an optional field. If not specified, the service name will be
+    // used as the exposed service name.
+    string alias = 2;
+
+    // `subset` allows the operator to choose a specific subset (service
+    // version) in cases when there are multiple subsets available for the
+    // exposed service. Applicable only to services within the mesh. The subset
+    //  must be defined in a corresponding DestinationRule.
+    string subset = 3;
+
+    // A list of cluster IDs that are allowed to call the service exposed by
+    // this cluster.
+    repeated string clusters = 4;
+
+  };
+
+  // REQUIRED: One or more exposed services. It is a list of services that
+  // will be exposed by the cluster where this policy is deployed along with
+  // the details for each service (e.g. alias, subset, etc).
+  repeated ExposedService exposed = 1;
+}
