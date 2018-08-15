@@ -1,0 +1,111 @@
+# 
+# Disable anything not required by the Multi-Cluster private ingress and egress gateways.
+global:
+  # Change this to true if Istio has been installed with auth on.
+  controlPlaneSecurityEnabled: false
+  
+  crds: false
+  istioNamespace: istio-system
+  proxy:
+    envoyStatsd:
+      enabled: false
+  enableTracing: false
+
+# We add to the gateways two custom gateways that will be used for the
+# ingress/egress of the inter-cluster communication.
+gateways:
+  enabled: true
+
+  istio-mc-ingressgateway:
+    enabled: true
+    labels:
+      app: istio-mc-ingressgateway
+      istio: mc-ingressgateway
+    replicaCount: 1
+    autoscaleMin: 1
+    autoscaleMax: 5
+    resources: {}
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: {}
+    serviceAnnotations: {}
+    type: LoadBalancer
+    ports:
+    - port: 80
+      name: http2
+    - port: 443
+      name: https
+    - port: 31400
+      name: tcp
+    secretVolumes:
+    - name: mc-ingressgateway-certs
+      secretName: istio-mc-ingressgateway-certs
+      mountPath: /etc/istio/mc-ingressgateway-certs
+    - name: mc-ingressgateway-ca-certs
+      secretName: istio-mc-ingressgateway-ca-certs
+      mountPath: /etc/istio/mc-ingressgateway-ca-certs
+
+  istio-mc-egressgateway:
+    enabled: true
+    labels:
+      app: istio-mc-egressgateway
+      istio: mc-egressgateway
+    replicaCount: 1
+    autoscaleMin: 1
+    autoscaleMax: 5
+    serviceAnnotations: {}
+    type: ClusterIP
+    ports:
+    - port: 80
+      name: http2
+    - port: 443
+      name: https
+    secretVolumes:
+    - name: mc-egressgateway-certs
+      secretName: istio-mc-egressgateway-certs
+      mountPath: /etc/istio/mc-egressgateway-certs
+    - name: mc-egressgateway-ca-certs
+      secretName: istio-mc-egressgateway-ca-certs
+      mountPath: /etc/istio/mc-egressgateway-ca-certs
+  
+  istio-ingressgateway:
+    enabled: false
+
+  istio-egressgateway:
+    enabled: false
+
+# all other components are disabled except the gateways
+ingress:
+  enabled: false
+
+security:
+  enabled: false
+
+sidecarInjectorWebhook:
+  enabled: false
+
+galley:
+  enabled: false
+
+mixer:
+  enabled: false
+
+pilot:
+  enabled: false
+
+grafana:
+  enabled: false
+
+prometheus:
+  enabled: false
+
+servicegraph:
+  enabled: false
+
+tracing:
+  enabled: false
+
+kiali:
+  enabled: false
+
+certmanager:
+  enabled: false
