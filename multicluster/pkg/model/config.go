@@ -12,7 +12,7 @@ var (
 		Group:       "multicluster",
 		Version:     "v1alpha1",
 		MessageName: "istio.multicluster.v1alpha1.ServiceExpositionPolicy",
-		//Validate:    ValidateServiceExpositionPolicy,
+		Validate:    ValidateServiceExpositionPolicy,
 	}
 
 	// IstioConfigTypes lists all Istio config types with schemas and validation
