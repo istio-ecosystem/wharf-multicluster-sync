@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"istio.io/istio/pilot/pkg/config/memory"
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
 	"istio.io/istio/pkg/log"
@@ -28,11 +29,17 @@ var (
 	namespace  string
 	kubeconfig string
 	context    string
+
+	store mcmodel.MCConfigStore
 )
 
 func main() {
 	flag.Parse()
 
+	// Setting up an in-memory config store for the agent
+	store = mcmodel.MakeMCStore(memory.Make(mcmodel.MultiClusterConfigTypes))
+
+	// Set up a Kubernetes API client for the Multi-Cluster configs
 	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy}
 	cl, err := crd.NewClient(kubeconfig, context, desc, "")
 	if err != nil {
@@ -47,17 +54,26 @@ func main() {
 		return
 	}
 
+	// Setting up a controller for the configured namespace to periodically watch for changes
 	ctl := crd.NewController(cl, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
 
+	// Register model configs event handler that will update the config store accordingly
 	ctl.RegisterEventHandler(mcmodel.ServiceExpositionPolicy.Type, func(config model.Config, ev model.Event) {
 		switch ev {
 		case model.EventAdd:
-			log.Infof("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
+			log.Debugf("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
+			log.Debug("Adding it to the config store..")
+			store.Create(config)
 		case model.EventDelete:
-			log.Infof("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
+			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
+			log.Debug("Deleting it from the config store..")
+			store.Delete(config.Type, config.Name, config.Namespace)
 		case model.EventUpdate:
-			log.Infof("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
+			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
+			log.Debug("Updating it in the config store..")
+			store.Update(config)
 		}
+		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(store.ServiceExpositionPolicies()))
 	})
 
 	shutdown := make(chan os.Signal, 1)
@@ -65,6 +81,7 @@ func main() {
 
 	stopCtrl := make(chan struct{})
 
+	log.Debug("Controller started")
 	go ctl.Run(stopCtrl)
 
 	<-shutdown
@@ -73,7 +90,9 @@ func main() {
 
 func init() {
 	// set up Istio logger
-	if err := log.Configure(log.DefaultOptions()); err != nil {
+	o := log.DefaultOptions()
+	o.SetOutputLevel(log.DefaultScopeName, log.DebugLevel)
+	if err := log.Configure(o); err != nil {
 		fmt.Printf("Failed to configure logger: %v", err)
 		return
 	}
