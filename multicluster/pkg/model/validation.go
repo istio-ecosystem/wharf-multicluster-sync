@@ -1,9 +1,9 @@
 package model
 
 import (
-	"github.com/golang/protobuf/proto"
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
 	multierror "github.com/hashicorp/go-multierror"
 
 	multicluster "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
