@@ -81,7 +81,7 @@ func main() {
 
 	stopCtrl := make(chan struct{})
 
-	log.Debug("Controller started")
+	log.Info("Controller started")
 	go ctl.Run(stopCtrl)
 
 	<-shutdown
