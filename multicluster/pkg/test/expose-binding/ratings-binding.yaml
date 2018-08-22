@@ -5,6 +5,9 @@ metadata:
   name: ratings
 spec:
   remote:
-  - cluster: donor-cluster
+  - cluster: donor-cluster1
     services:
     - name: ratings
+  - cluster: donor-cluster2
+    services:
+    - name: ratings		# Mergeable!

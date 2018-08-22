@@ -24,6 +24,16 @@ var (
 		Validate:    ValidateServiceExpositionPolicy,
 	}
 
+	// ServiceExpositionPolicy describes v1alpha1 multi-cluster exposition policy
+	RemoteServiceBinding = istio.ProtoSchema{
+		Type:        "remote-service-binding",
+		Plural:      "remote-service-bindings",
+		Group:       "multicluster",
+		Version:     "v1alpha1",
+		MessageName: "istio.multicluster.v1alpha1.RemoteServiceBinding",
+		Validate:    ValidateRemoteServiceBinding,
+	}
+
 	// MultiClusterConfigTypes lists all Istio config types with schemas and validation
 	MultiClusterConfigTypes = istio.ConfigDescriptor{
 		ServiceExpositionPolicy,
