@@ -1,0 +1,106 @@
+# From https://github.ibm.com/istio-research/multicluster-roadmap/issues/4
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  name: sample1
+  namespace: mynamespace
+spec:
+  remote:
+  - cluster: clusterC
+    services:
+    - name: FooA
+      alias: remoteFooA
+      namespace: my-remote
+#####################################
+
+---
+# One service entry for each exposed service from remote clusters
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: service-entry-FooA
+spec:
+  hosts:
+  - FooA.my-remote.svc.cluster.global
+  ports:
+  - number: 80
+    name: http
+    protocol: HTTP
+  location: MESH_EXTERNAL
+  resolution: DNS
+  endpoints:
+  - address: istio-egressgateway.istio-system.svc.cluster.local
+    ports:
+      http: 80 
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: dest-rule-FooA-my-remote
+spec:
+  host: FooA.my-remote.svc.cluster.global
+  trafficPolicy:
+    tls:
+      mode: MUTUAL
+      clientCertificate: /etc/certs/cert-chain.pem
+      privateKey: /etc/certs/key.pem
+      caCertificates: /etc/certs/root-cert.pem
+      sni: FooA.my-remote.svc.cluster.global
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: istio-egressgateway-FooA-my-remote
+spec:
+  selector:
+    istio: egressgateway
+  servers:
+  - port:
+      number: 80 
+      name: FooA-my-remote-80
+      protocol: TLS 
+    hosts:
+    - FooA.my-remote.svc.cluster.global
+    tls:
+      mode: PASSTHROUGH
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: egressgateway-to-ingressgateway-FooA-my-remote
+spec:
+  hosts:
+  - FooA.my-remote.svc.cluster.global
+  gateways:
+  - istio-egressgateway-FooA-my-remote
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - FooA.my-remote.svc.cluster.global
+    route:
+    - destination:
+        host: clusterC
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: service-entry-ingress-gateway-clusterC
+spec:
+  hosts:
+  - clusterC
+  addresses:
+  - 127.8.8.8 # dummy 
+  ports:
+  - number: 80
+    name: tcp
+    protocol: TCP
+  location: MESH_EXTERNAL  
+  resolution: DNS
+  endpoints:
+    # Address of ingress gateway of cluster 2
+  - address: egressgateway.clusterC __REPLACEME__
+    ports:
+      tcp: 80
