@@ -39,6 +39,12 @@ ignored = [
   name = "k8s.io/client-go"
   branch = "release-7.0"	# For K8s 1.10.x
 
+# K8s needs an old mergo, see k8s.io/client-go/tools/clientcmd/client_config.go:166
+# which says "Our mergo.Merge version is older than this change."
+[[override]]
+  name = "github.com/imdario/mergo"
+  revision = "6633656539c1639d9d78127b7d47c622b5d7b6dc"
+
 [prune]
   go-tests = true
   unused-packages = true
