@@ -37,6 +37,7 @@ var (
 	// MultiClusterConfigTypes lists all Istio config types with schemas and validation
 	MultiClusterConfigTypes = istio.ConfigDescriptor{
 		ServiceExpositionPolicy,
+		RemoteServiceBinding,
 	}
 )
 

@@ -67,7 +67,7 @@ func TestParseYaml(t *testing.T) {
 	}
 }
 
-// checkParsedTypes verifies the YAML file contains the expected types and not maps of interfaces
+// checkParsedTypes verifies the input YAML file contains the expected types and not maps of interfaces
 func checkParsedTypes(reader io.Reader, typs []string) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
@@ -87,35 +87,18 @@ func checkParsedTypes(reader io.Reader, typs []string) error {
 }
 
 func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
-	out := make([]istiomodel.Config, 0)
 
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	_, kinds, err := istiocrd.ParseInputs(string(data))
+	config, _, err := ParseInputs(string(data))
 	if err != nil {
 		return nil, err
 	}
 
-	// ParseInputs(), knows about Istio objects but not our objects.  Fixup.
-	// This code goes away if we become part of Istio.
-	for _, kind := range kinds {
-		schema, ok := unknownKinds[kind.TypeMeta.Kind]
-		if ok {
-			config, err := istiocrd.ConvertObject(schema, &kind, "")
-			// TODO Also use model.RemoteServiceBinding of the kind is
-			if err != nil {
-				return nil, fmt.Errorf("cannot parse proto message: %v", err)
-			}
-			out = append(out, *config)
-		} else {
-			return nil, fmt.Errorf("cannot convert %q", kind.TypeMeta.Kind)
-		}
-	}
-
-	return out, nil
+	return config, nil
 }
 
 func writeYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomodel.Config, writer io.Writer) {

@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 
+	multiclustermodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 
@@ -153,7 +155,7 @@ func parseInputsImpl(inputs string, withValidate bool) ([]model.Config, []IstioK
 			continue
 		}
 
-		schema, exists := model.IstioConfigTypes.GetByType(CamelCaseToKabobCase(obj.Kind))
+		schema, exists := multiclustermodel.MultiClusterConfigTypes.GetByType(CamelCaseToKabobCase(obj.Kind))
 		if !exists {
 			log.Debugf("unrecognized type %v", obj.Kind)
 			others = append(others, obj)
