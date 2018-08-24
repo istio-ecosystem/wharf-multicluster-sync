@@ -48,7 +48,7 @@ spec:
       - server.ns2.svc.cluster.global
     route:
     - destination:
-        host: server
+        host: server.ns2.svc.cluster.local
         port:
           number: 80
         subset: notls

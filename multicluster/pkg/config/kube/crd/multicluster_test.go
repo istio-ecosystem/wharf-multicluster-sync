@@ -25,6 +25,13 @@ import (
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 )
 
+// debugClusterInfo simulates the function of K8s Cluster Registry
+// https://github.com/kubernetes/cluster-registry in unit tests.
+type debugClusterInfo struct {
+	ips map[string]string
+	ports map[string]uint32
+}
+
 var (
 	// TODO This goes away if we become part of Istio
 	unknownKinds = map[string]istiomodel.ProtoSchema{
@@ -141,6 +148,37 @@ func TestBindingToConfiguration(t *testing.T) {
 	}
 }
 
+func TestValidation(t *testing.T) {
+	tt := []struct {
+		in  string
+		mustFail bool
+	}{
+		{in: "invalid-exposure.yaml",
+			mustFail: true},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.in, func(t *testing.T) {
+			in, err := os.Open("../../../test/expose-binding/" + tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer in.Close() // nolint: errcheck
+
+			_, err = readConfigs(in)
+			if tc.mustFail {
+				if err == nil {
+					t.Errorf("Validated correct; failure expected")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error converting configs: %v", err)
+				}
+			}
+		})
+	}
+}
+
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
 func readAndConvert(reader io.Reader, writer io.Writer) error {
 	configs, err := readConfigs(reader)
@@ -148,7 +186,17 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 	
-	istioConfig, err := model.ConvertBindingsAndExposures(configs)
+	ci := debugClusterInfo{
+		ips: map[string]string {
+			"clusterC": "127.0.0.1",
+			"cluster2": "127.0.0.1",
+		},
+		ports: map[string]uint32 {
+			"clusterC": 80,
+			"cluster2": 80,
+		},
+	}
+	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci)
 	if err != nil {
 		return err
 	}
@@ -191,4 +239,20 @@ func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []isti
 	}
 	
 	return nil
+}
+
+func (ci debugClusterInfo) Ip(name string) string {
+	out, ok := ci.ips[name]
+	if ok {
+		return out
+	}
+	return "255.255.255.255" // dummy value for unknown clusters
+}
+
+func (ci debugClusterInfo) Port(name string) uint32 {
+	out, ok := ci.ports[name]
+	if ok {
+		return out
+	}
+	return 8080 // dummy value for unknown clusters
 }

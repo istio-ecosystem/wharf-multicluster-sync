@@ -48,7 +48,7 @@ spec:
       - FooA.mynamespace.svc.cluster.global
     route:
     - destination:
-        host: ServiceA
+        host: ServiceA.mynamespace.svc.cluster.local
         port:
           number: 80
         subset: notls

@@ -18,6 +18,10 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+type ClusterInfo interface {
+    Ip(name string) string
+    Port(name string) uint32
+}
 func remoteServiceNamespace(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
 	if rs.Namespace != "" {
 		return rs.Namespace
@@ -203,19 +207,17 @@ func clusterToServiceEntry(cluster string, ip string, port uint32, config istiom
 	}
 }
 
-func convertRSB(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding) ([]istiomodel.Config, error) {
+func convertRSB(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range rsb.Remote {
-		ip := "127.0.0.1"	// TODO this should be looked up using cluster naming mechanism
-		port := 80			// TODO This should be looked up using cluster naming mechanism
 		for _, svc := range remote.Services {
 			out = append(out, *serviceToServiceEntry(svc, config))
 			out = append(out, *serviceToDestinationRule(svc, config))
 			out = append(out, *serviceToGateway(svc, config))
 			out = append(out, *serviceToVirtualService(remote.Cluster, svc, config))
 		}
-		out = append(out, *clusterToServiceEntry(remote.Cluster, ip, uint32(port), config))
+		out = append(out, *clusterToServiceEntry(remote.Cluster, ci.Ip(remote.Cluster), ci.Port(remote.Cluster), config))
 	}
 	
 	return out, nil
@@ -325,7 +327,7 @@ func expositionToVirtualService(es *v1alpha1.ServiceExpositionPolicy_ExposedServ
 					Route: []*v1alpha3.DestinationWeight{
 						&v1alpha3.DestinationWeight{
 							Destination: &v1alpha3.Destination{
-								Host: es.Name,
+								Host: fmt.Sprintf("%s.%s.svc.cluster.local", es.Name, getNamespace(config)),
 								Subset: "notls",
 								Port: &v1alpha3.PortSelector{
 									Port: &v1alpha3.PortSelector_Number{
@@ -371,7 +373,7 @@ func convertSEP(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy)
 	return out, nil
 }
 
-func ConvertBindingsAndExposures(mcs []istiomodel.Config) ([]istiomodel.Config, error) {
+func ConvertBindingsAndExposures(mcs []istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 	
 	for _, mc := range mcs {
@@ -379,7 +381,7 @@ func ConvertBindingsAndExposures(mcs []istiomodel.Config) ([]istiomodel.Config, 
 		var err error
 		rsb, ok := mc.Spec.(*v1alpha1.RemoteServiceBinding)
 		if ok {
-			istio, err = convertRSB(mc, rsb)
+			istio, err = convertRSB(mc, rsb, ci)
 		}
 		sep, ok := mc.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		if ok {

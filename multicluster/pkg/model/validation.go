@@ -6,6 +6,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	multierror "github.com/hashicorp/go-multierror"
 
+	istiomodel "istio.io/istio/pilot/pkg/model"
+
 	multicluster "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 )
 
@@ -20,11 +22,25 @@ func ValidateServiceExpositionPolicy(name, namespace string, msg proto.Message) 
 	if len(value.Exposed) == 0 {
 		errs = appendErrors(errs, fmt.Errorf("policy must have at least one exposition"))
 	} else {
-		// for _, exposed := range value.Exposed {
-		// 	errs = appendErrors(errs, validateServer(server))
-		// }
+		for _, exposed := range value.Exposed {
+		 	errs = appendErrors(errs, validateExposedService(exposed))
+		}
 	}
 
+	return errs
+}
+
+func validateExposedService(vs *multicluster.ServiceExpositionPolicy_ExposedService) error {
+	var errs error
+	if !istiomodel.IsDNS1123Label(vs.Name) {
+		errs = multierror.Append(errs, fmt.Errorf("invalid name: %q", vs.Name))
+	}
+	if vs.Alias != "" && !istiomodel.IsDNS1123Label(vs.Alias) {
+		errs = multierror.Append(errs, fmt.Errorf("invalid alias: %q", vs.Alias))
+	}
+
+	// TODO should we validate that at least one Cluster is present?  Or does leaving
+	// "Clusters" empty mean any cluster can talk to the service (public API)? 
 	return errs
 }
 

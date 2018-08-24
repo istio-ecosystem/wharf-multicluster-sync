@@ -1,0 +1,10 @@
+# Expose the "ratings" service
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: invalid-name
+spec:
+  exposed:
+  - name: $
+    clusters:
+    - acceptor-cluster
