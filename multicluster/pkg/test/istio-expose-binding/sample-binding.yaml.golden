@@ -1,0 +1,95 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  creationTimestamp: null
+  name: service-entry-sample1
+  namespace: mynamespace
+spec:
+  endpoints:
+  - address: istio-egressgateway.istio-system.svc.cluster.local
+    ports:
+      http: 80
+  hosts:
+  - remoteFooA.my-remote.svc.cluster.global
+  ports:
+  - name: http
+    number: 80
+    protocol: HTTP
+  resolution: DNS
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  creationTimestamp: null
+  name: dest-rule-sample1-my-remote
+  namespace: mynamespace
+spec:
+  host: remoteFooA.my-remote.svc.cluster.global
+  trafficPolicy:
+    tls:
+      caCertificates: /etc/certs/root-cert.pem
+      clientCertificate: /etc/certs/cert-chain.pem
+      mode: MUTUAL
+      privateKey: /etc/certs/key.pem
+      sni: remoteFooA.my-remote.svc.cluster.global
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  creationTimestamp: null
+  name: istio-egressgateway-sample1-my-remote
+  namespace: mynamespace
+spec:
+  selector:
+    istio: egressgateway
+  servers:
+  - hosts:
+    - remoteFooA.my-remote.svc.cluster.global
+    port:
+      name: remoteFooA-my-remote-80
+      number: 80
+      protocol: TLS
+    tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  creationTimestamp: null
+  name: istio-egressgateway-sample1-my-remote
+  namespace: mynamespace
+spec:
+  gateways:
+  - istio-egressgateway-sample1-my-remote
+  hosts:
+  - remoteFooA.my-remote.svc.cluster.global
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - remoteFooA.my-remote.svc.cluster.global
+    route:
+    - destination:
+        host: clusterC
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  creationTimestamp: null
+  name: service-entry-ingress-gateway-clusterC
+  namespace: mynamespace
+spec:
+  addresses:
+  - 127.8.8.8
+  endpoints:
+  - address: 127.0.0.1
+    ports:
+      tcp: 80
+  hosts:
+  - clusterC
+  ports:
+  - name: tcp
+    number: 80
+    protocol: TCP
+  resolution: DNS
