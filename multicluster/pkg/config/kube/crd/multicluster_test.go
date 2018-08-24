@@ -20,6 +20,8 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
+	"istio.io/istio/pilot/test/util"
+
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 )
 
@@ -36,7 +38,6 @@ func TestParseYaml(t *testing.T) {
 		in       string
 		outtypes []string
 	}{
-		// Verify we can convert Kubernetes Istio Ingress
 		{in: "ratings-exposure.yaml",
 			outtypes: []string{"*v1alpha1.ServiceExpositionPolicy"}},
 		{in: "sample-exposure.yaml",
@@ -101,14 +102,73 @@ func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
 	return config, nil
 }
 
-func writeYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomodel.Config, writer io.Writer) {
+func TestBindingToConfiguration(t *testing.T) {
+	tt := []struct {
+		in  string
+		out string
+	}{
+		{in: "sample-binding.yaml",
+			out: "sample-binding.yaml"},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.in, func(t *testing.T) {
+			in, err := os.Open("../../../test/expose-binding/" + tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer in.Close() // nolint: errcheck
+
+			outFilename := "../../../test/istio-expose-binding/" + tc.out
+			out, err := os.Create(outFilename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer out.Close() // nolint: errcheck
+
+			if err := readAndConvert(in, out); err != nil {
+				t.Fatalf("Unexpected error converting configs: %v", err)
+			}
+
+			util.CompareYAML(outFilename, t)
+		})
+	}
+}
+
+// readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
+func readAndConvert(reader io.Reader, writer io.Writer) error {
+	configs, err := readConfigs(reader)
+	if err != nil {
+		return err
+	}
+	
+	istioConfig, err := model.ConvertBindingsAndExposures(configs)
+	if err != nil {
+		return err
+	}
+
+	configDescriptor := istiomodel.ConfigDescriptor{
+		istiomodel.VirtualService,
+		istiomodel.Gateway,
+		istiomodel.DestinationRule,
+		istiomodel.ServiceEntry,
+	}
+	err = writeIstioYAMLOutput(configDescriptor, istioConfig, writer)
+	if err != nil {
+		return err
+	}
+	
+	return nil
+}
+
+func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomodel.Config, writer io.Writer) error {
 	for i, config := range configs {
 		schema, exists := descriptor.GetByType(config.Type)
 		if !exists {
 			log.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
 			continue
 		}
-		obj, err := ConvertConfig(schema, config)
+		obj, err := istiocrd.ConvertConfig(schema, config)
 		if err != nil {
 			log.Errorf("Could not decode %v: %v", config.Name, err)
 			continue
@@ -123,4 +183,6 @@ func writeYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomode
 			writer.Write([]byte("---\n")) // nolint: errcheck
 		}
 	}
+	
+	return nil
 }

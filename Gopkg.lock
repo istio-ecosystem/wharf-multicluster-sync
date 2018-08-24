@@ -207,6 +207,14 @@
   version = "v2.1"
 
 [[projects]]
+  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = "UT"
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:eeb34126dccdbcd596e12f9a42d164247f16cab3472c5641352333730859a524"
   name = "github.com/prometheus/client_golang"
   packages = ["prometheus"]
@@ -470,7 +478,7 @@
   revision = "123b0a79a4dba5bd653dcac09cf731b8002e5341"
 
 [[projects]]
-  digest = "1:bce58e4a21d59f3eef361a1eb88ecaabb9f0bca1c9cd0347258fc4a8e7318d1e"
+  digest = "1:2898840c2e85d24b0c1024368cd1e76b2b0bc91d064534e55c3f8a68ac539461"
   name = "istio.io/istio"
   packages = [
     "pilot/pkg/config/kube/crd",
@@ -478,6 +486,7 @@
     "pilot/pkg/model",
     "pilot/pkg/model/test",
     "pilot/pkg/serviceregistry/kube",
+    "pilot/test/util",
     "pkg/cache",
     "pkg/kube",
     "pkg/log",
@@ -662,6 +671,7 @@
     "istio.io/istio/pilot/pkg/config/memory",
     "istio.io/istio/pilot/pkg/model",
     "istio.io/istio/pilot/pkg/serviceregistry/kube",
+    "istio.io/istio/pilot/test/util",
     "istio.io/istio/pkg/kube",
     "istio.io/istio/pkg/log",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
