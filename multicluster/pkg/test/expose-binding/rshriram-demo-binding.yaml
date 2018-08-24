@@ -1,0 +1,11 @@
+# Reverse-engineered from https://github.com/rshriram/istio_federation_demo/tree/master/route-rules
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  name: server
+spec:
+  remote:
+  - cluster: cluster2
+    services:
+    - name: server
+      namespace: ns2 # Remote namespace needed

@@ -1,0 +1,9 @@
+# Reverse-engineered from https://github.com/rshriram/istio_federation_demo/tree/master/route-rules
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: server
+  namespace: ns2
+spec:
+  exposed:
+  - name: server

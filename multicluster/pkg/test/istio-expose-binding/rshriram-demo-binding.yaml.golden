@@ -2,15 +2,15 @@ apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
   creationTimestamp: null
-  name: service-entry-sample1
-  namespace: mynamespace
+  name: service-entry-server
+  namespace: default
 spec:
   endpoints:
   - address: istio-egressgateway.istio-system.svc.cluster.local
     ports:
       http: 80
   hosts:
-  - remoteFooA.my-remote.svc.cluster.global
+  - server.ns2.svc.cluster.global
   ports:
   - name: http
     number: 80
@@ -21,32 +21,32 @@ apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
   creationTimestamp: null
-  name: dest-rule-sample1-my-remote
-  namespace: mynamespace
+  name: dest-rule-server-ns2
+  namespace: default
 spec:
-  host: remoteFooA.my-remote.svc.cluster.global
+  host: server.ns2.svc.cluster.global
   trafficPolicy:
     tls:
       caCertificates: /etc/certs/root-cert.pem
       clientCertificate: /etc/certs/cert-chain.pem
       mode: MUTUAL
       privateKey: /etc/certs/key.pem
-      sni: remoteFooA.my-remote.svc.cluster.global
+      sni: server.ns2.svc.cluster.global
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   creationTimestamp: null
-  name: istio-egressgateway-FooA-my-remote
-  namespace: mynamespace
+  name: istio-egressgateway-server-ns2
+  namespace: default
 spec:
   selector:
     istio: egressgateway
   servers:
   - hosts:
-    - remoteFooA.my-remote.svc.cluster.global
+    - server.ns2.svc.cluster.global
     port:
-      name: remoteFooA-my-remote-80
+      name: server-ns2-80
       number: 80
       protocol: TLS
     tls: {}
@@ -55,21 +55,21 @@ apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
   creationTimestamp: null
-  name: egressgateway-to-ingressgateway-FooA-my-remote
-  namespace: mynamespace
+  name: egressgateway-to-ingressgateway-server-ns2
+  namespace: default
 spec:
   gateways:
-  - istio-egressgateway-FooA-my-remote
+  - istio-egressgateway-server-ns2
   hosts:
-  - remoteFooA.my-remote.svc.cluster.global
+  - server.ns2.svc.cluster.global
   tls:
   - match:
     - port: 80
       sniHosts:
-      - remoteFooA.my-remote.svc.cluster.global
+      - server.ns2.svc.cluster.global
     route:
     - destination:
-        host: clusterC
+        host: cluster2
         port:
           number: 80
 ---
@@ -77,8 +77,8 @@ apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
   creationTimestamp: null
-  name: service-entry-ingress-gateway-clusterC
-  namespace: mynamespace
+  name: service-entry-ingress-gateway-cluster2
+  namespace: default
 spec:
   addresses:
   - 127.8.8.8
@@ -87,7 +87,7 @@ spec:
     ports:
       tcp: 80
   hosts:
-  - clusterC
+  - cluster2
   ports:
   - name: tcp
     number: 80
