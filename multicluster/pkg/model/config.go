@@ -1,3 +1,7 @@
+
+// Package model provides an implementation of the MCConfigStore.  It also
+// provides conversion from ServiceExpositionPolicy and 
+// RemoteServiceBinding to Istio rules that express the policy.
 package model
 
 import (

@@ -109,6 +109,8 @@ func TestBindingToConfiguration(t *testing.T) {
 	}{
 		{in: "sample-binding.yaml",
 			out: "sample-binding.yaml"},
+		{in: "sample-exposure.yaml",
+			out: "sample-exposure.yaml"},
 	}
 
 	for _, tc := range tt {

@@ -1,50 +1,54 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
+  creationTimestamp: null
   name: dest-rule-ServiceA-default-notls
+  namespace: mynamespace
 spec:
   host: ServiceA.default.svc.cluster.local
   subsets:
   - name: notls
     trafficPolicy:
-      tls:
-        mode: DISABLE
+      tls: {}
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
+  creationTimestamp: null
   name: istio-ingressgateway-ServiceA-mynamespace
+  namespace: mynamespace
 spec:
   selector:
     istio: ingressgateway
   servers:
-    # Union of all ports exposed by this cluster
-  - port:
-      number: 80
+  - hosts:
+    - FooA.mynamespace.svc.cluster.global
+    port:
       name: ServiceA-mynamespace-80
+      number: 80
       protocol: TLS
-    hosts:
-    - ServiceA.mynamespace.svc.cluster.global
     tls:
-      mode: PASSTHROUGH
+      mode: SIMPLE
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
+  creationTimestamp: null
   name: ingressgateway-to-ServiceA-mynamespace
+  namespace: mynamespace
 spec:
-  hosts:
-  - ServiceA.mynamespace.svc.cluster.global
   gateways:
   - istio-ingressgateway-ServiceA-mynamespace
+  hosts:
+  - FooA.mynamespace.svc.cluster.global
   tls:
   - match:
     - port: 80
       sniHosts:
-      - ServiceA.mynamespace.svc.cluster.global
+      - FooA.mynamespace.svc.cluster.global
     route:
     - destination:
-        host: ServiceA.mynamespace.svc.cluster.local
-        subset: notls
+        host: ServiceA
         port:
           number: 80
+        subset: notls
