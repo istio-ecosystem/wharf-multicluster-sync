@@ -175,6 +175,14 @@
   version = "1.1.5"
 
 [[projects]]
+  branch = "master"
+  digest = "1:fdde951a504955d8e249a8c8facf6dd22f1a963c8705eeb0b45fbaebb830f0f4"
+  name = "github.com/luci/go-render"
+  packages = ["render"]
+  pruneopts = "UT"
+  revision = "9a04cc21af0f2e328bfb81741ec9e8967c4f6541"
+
+[[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -666,7 +674,10 @@
     "github.com/ghodss/yaml",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/proto",
+    "github.com/gorilla/mux",
     "github.com/hashicorp/go-multierror",
+    "github.com/luci/go-render/render",
+    "istio.io/api/networking/v1alpha3",
     "istio.io/istio/pilot/pkg/config/kube/crd",
     "istio.io/istio/pilot/pkg/config/memory",
     "istio.io/istio/pilot/pkg/model",
@@ -674,6 +685,7 @@
     "istio.io/istio/pilot/test/util",
     "istio.io/istio/pkg/kube",
     "istio.io/istio/pkg/log",
+    "k8s.io/api/core/v1",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",

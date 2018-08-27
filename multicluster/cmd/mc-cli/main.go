@@ -17,6 +17,8 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	
+	"github.com/luci/go-render/render"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
@@ -40,6 +42,7 @@ type staticClusterInfo struct {
 var (
 	filename string // input filename
 	clusters string
+	gengo bool
 )
 
 func main() {
@@ -57,7 +60,12 @@ func main() {
 	}
 	defer in.Close() // nolint: errcheck
 
-	err = readAndConvert(in, os.Stdout)
+	if gengo {
+		err = convertToGo(in, os.Stdout)
+	} else {
+		err = readAndConvert(in, os.Stdout)
+	}
+	
 	if err != nil {
 		fmt.Printf("Error %v\n", err)
 		os.Exit(3)
@@ -66,7 +74,8 @@ func main() {
 
 func init() {
 	flag.StringVar(&filename, "filename", "", "Path to YAML file containing Service Exposition Policies and Remote Service Bindings.")
-	flag.StringVar(&clusters, "cluster", "", "cluster=host:port[,cluster2=host2:port2]")
+	flag.StringVar(&clusters, "cluster", "", "e.g. cluster=host:port[,cluster2=host2:port2]")
+	flag.BoolVar(&gengo, "gengo", false, "Generate Go code instead of YAML]")
 }
 
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
@@ -97,6 +106,34 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
+	return nil
+}
+
+// convertToGo converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to
+// Istio config Go source code fragment.
+func convertToGo(reader io.Reader, writer io.Writer) error {
+	configs, err := readConfigs(reader)
+	if err != nil {
+		return err
+	}
+
+	ci, err := parseClusterOption(clusters)
+	if err != nil {
+		return err
+	}
+
+	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci)
+	if err != nil {
+		return err
+	}
+
+	for _, config := range istioConfig {
+		_, err = fmt.Println(render.Render(config.Spec))
+		if err != nil {
+			return err
+		}
+	}
+	
 	return nil
 }
 
