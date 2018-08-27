@@ -119,10 +119,18 @@ func (s *Server) exposedServices(clusterID string) []*ExposedService {
 // Checks whether the cluster ID is listed in the list of clusters that the
 // service is exposed to.
 func isRelevantExposedService(service *v1alpha1.ServiceExpositionPolicy_ExposedService, toClusterID string) bool {
+	// If there is no clusters list, we treat this policy as exposed to all trusted clusters
+	if len(service.Clusters) == 0 {
+		return true
+	}
+
+	// Go through the list of allowed clusters and see if it is listed
 	for _, cluster := range service.Clusters {
 		if cluster == toClusterID {
 			return true
 		}
 	}
+
+	// Service is not exposed to the specified cluster
 	return false
 }
