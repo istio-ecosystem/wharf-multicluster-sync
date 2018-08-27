@@ -95,8 +95,12 @@ func (s *Server) exposedServices(clusterID string) []*ExposedService {
 		value, _ := policy.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		for _, exposed := range value.Exposed {
 			if isRelevantExposedService(exposed, clusterID) {
+				exposedName := exposed.Alias
+				if exposedName == "" {
+					exposedName = exposed.Name
+				}
 				results = append(results, &ExposedService{
-					Name: exposed.Alias,
+					Name: exposedName,
 				})
 			}
 		}

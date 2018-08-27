@@ -66,7 +66,7 @@ func (c *Client) close() {
 func (c *Client) update() {
 	exposed, err := c.callPeer()
 	if err != nil {
-		log.Errora(err)
+		log.Debugf("Peer agent [%s] is not accessible. %v", c.peer.ID, err)
 		return
 	}
 	log.Debugf("Number of exposed services on cluster [%s]: %d", c.peer.ID, len(exposed.Services))
@@ -76,7 +76,7 @@ func (c *Client) update() {
 		return
 	}
 
-	binding := exposedServicesToBinding(exposed)
+	binding := c.exposedServicesToBinding(exposed)
 	_, err = c.crdClient.Create(*binding)
 	if err != nil {
 		log.Errora(err)
@@ -113,7 +113,7 @@ func (c *Client) needsUpdate(exposed *ExposedServices) bool {
 	return true
 }
 
-func exposedServicesToBinding(exposed *ExposedServices) *istiomodel.Config {
+func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.Config {
 	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
 	for i, service := range exposed.Services {
 		services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
@@ -121,18 +121,19 @@ func exposedServicesToBinding(exposed *ExposedServices) *istiomodel.Config {
 			Alias: service.Name,
 		}
 	}
+	name := c.peer.ID + "-services"
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:      model.RemoteServiceBinding.Type,
 			Group:     model.RemoteServiceBinding.Group,
 			Version:   model.RemoteServiceBinding.Version,
-			Name:      "dummy",
+			Name:      name,
 			Namespace: "",
 		},
 		Spec: &v1alpha1.RemoteServiceBinding{
 			Remote: []*v1alpha1.RemoteServiceBinding_RemoteCluster{
 				&v1alpha1.RemoteServiceBinding_RemoteCluster{
-					Cluster:  "cluster",
+					Cluster:  c.peer.ID,
 					Services: services,
 				},
 			},
