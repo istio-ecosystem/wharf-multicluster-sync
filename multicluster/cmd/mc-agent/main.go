@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
+
 	"istio.io/istio/pilot/pkg/config/memory"
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
@@ -29,6 +31,11 @@ var (
 	namespace  string
 	kubeconfig string
 	context    string
+	id         string
+	port       int
+
+	peers       []agent.PeerAgent
+	hasDemoPeer bool
 
 	store mcmodel.MCConfigStore
 )
@@ -36,11 +43,22 @@ var (
 func main() {
 	flag.Parse()
 
+	if id == "" {
+		log.Error("Cluster ID must be provided with the -id flag")
+		return
+	}
+
+	// TODO For internal demo purposes only. Should be removed and read peers configuration
+	// from a file or custom resource.
+	if hasDemoPeer {
+		demoClusterPeer()
+	}
+
 	// Setting up an in-memory config store for the agent
 	store = mcmodel.MakeMCStore(memory.Make(mcmodel.MultiClusterConfigTypes))
 
 	// Set up a Kubernetes API client for the Multi-Cluster configs
-	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy}
+	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy, mcmodel.RemoteServiceBinding}
 	cl, err := crd.NewClient(kubeconfig, context, desc, "")
 	if err != nil {
 		log.Errora(err)
@@ -81,11 +99,44 @@ func main() {
 
 	stopCtrl := make(chan struct{})
 
-	log.Debug("Controller started")
+	log.Debug("Starting controller..")
 	go ctl.Run(stopCtrl)
 
+	log.Debugf("Starting agent listener on port %d..", port)
+	server, err := agent.NewServer("", uint16(port), store)
+	go server.Run()
+
+	log.Debugf("Starting agent clients. Number of peers: %d", len(peers))
+	clients := []*agent.Client{}
+	for _, peer := range peers {
+		client, err := agent.NewClient(id, peer, cl)
+		if err != nil {
+			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
+			continue
+		}
+		go client.Run()
+		clients = append(clients, client)
+	}
+
 	<-shutdown
+	log.Debug("Shutting down the Multi-Cluster agent")
+
 	close(stopCtrl)
+	server.Close()
+	for _, client := range clients {
+		client.Close()
+	}
+
+	_ = log.Sync()
+}
+
+func demoClusterPeer() {
+	peer := agent.PeerAgent{
+		ID:      "clusterB",
+		Address: "localhost",
+		Port:    8999,
+	}
+	peers = append(peers, peer)
 }
 
 func init() {
@@ -97,7 +148,13 @@ func init() {
 		return
 	}
 
+	flag.StringVar(&id, "id", "", "Required. Cluster ID where the agent is running.")
+	flag.IntVar(&port, "port", 8999, "Listen port for the agent to listen on.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&context, "context", "", "Kubeconfig context to be used. Only required if out-of-cluster.")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch. Default (or empty string) is all namespaces.")
+
+	flag.BoolVar(&hasDemoPeer, "hasDemoPeer", false, "Demo purposes only. To be removed.")
+
+	peers = []agent.PeerAgent{}
 }

@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	"istio.io/istio/pilot/pkg/config/kube/crd"
-
 	multierror "github.com/hashicorp/go-multierror"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -74,11 +72,12 @@ type restClient struct {
 }
 
 func apiVersion(schema *model.ProtoSchema) string {
-	return crd.ResourceGroup(schema) + "/" + schema.Version
+	return ResourceGroup(schema) + "/" + schema.Version
 }
 
 func apiVersionFromConfig(config *model.Config) string {
-	return config.Group + "/" + config.Version
+	//return config.Group + "/" + config.Version
+	return "multicluster.istio.io/v1alpha1"
 }
 
 func newClientSet(descriptor model.ConfigDescriptor) (map[string]*restClient, error) {
@@ -94,7 +93,7 @@ func newClientSet(descriptor model.ConfigDescriptor) (map[string]*restClient, er
 			// create a new client if one doesn't already exist
 			rc = &restClient{
 				apiVersion: schema.GroupVersion{
-					crd.ResourceGroup(&typ),
+					ResourceGroup(&typ),
 					typ.Version,
 				},
 			}
@@ -192,7 +191,7 @@ func (rc *restClient) registerResources() error {
 
 	skipCreate := true
 	for _, schema := range rc.descriptor {
-		name := crd.ResourceName(schema.Plural) + "." + crd.ResourceGroup(&schema)
+		name := ResourceName(schema.Plural) + "." + ResourceGroup(&schema)
 		crd, errGet := cs.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, meta_v1.GetOptions{})
 		if errGet != nil {
 			skipCreate = false
@@ -220,8 +219,8 @@ func (rc *restClient) registerResources() error {
 	}
 
 	for _, schema := range rc.descriptor {
-		g := crd.ResourceGroup(&schema)
-		name := crd.ResourceName(schema.Plural) + "." + g
+		g := ResourceGroup(&schema)
+		name := ResourceName(schema.Plural) + "." + g
 		crdScope := apiextensionsv1beta1.NamespaceScoped
 		if schema.ClusterScoped {
 			crdScope = apiextensionsv1beta1.ClusterScoped
@@ -235,8 +234,8 @@ func (rc *restClient) registerResources() error {
 				Version: schema.Version,
 				Scope:   crdScope,
 				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-					Plural: crd.ResourceName(schema.Plural),
-					Kind:   crd.KabobCaseToCamelCase(schema.Type),
+					Plural: ResourceName(schema.Plural),
+					Kind:   KabobCaseToCamelCase(schema.Type),
 				},
 			},
 		}
@@ -251,7 +250,7 @@ func (rc *restClient) registerResources() error {
 	errPoll := wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
 	descriptor:
 		for _, schema := range rc.descriptor {
-			name := crd.ResourceName(schema.Plural) + "." + crd.ResourceGroup(&schema)
+			name := ResourceName(schema.Plural) + "." + ResourceGroup(&schema)
 			crd, errGet := cs.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, meta_v1.GetOptions{})
 			if errGet != nil {
 				return false, errGet
@@ -305,7 +304,7 @@ func (rc *restClient) deregisterResources() error {
 
 	var errs error
 	for _, schema := range rc.descriptor {
-		name := crd.ResourceName(schema.Plural) + "." + crd.ResourceGroup(&schema)
+		name := ResourceName(schema.Plural) + "." + ResourceGroup(&schema)
 		err := cs.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(name, nil)
 		errs = multierror.Append(errs, err)
 	}
@@ -343,7 +342,7 @@ func (cl *Client) Get(typ, name, namespace string) (*model.Config, bool) {
 	config := s.object.DeepCopyObject().(IstioObject)
 	err := rc.dynamic.Get().
 		Namespace(namespace).
-		Resource(crd.ResourceName(schema.Plural)).
+		Resource(ResourceName(schema.Plural)).
 		Name(name).
 		Do().Into(config)
 
@@ -352,7 +351,7 @@ func (cl *Client) Get(typ, name, namespace string) (*model.Config, bool) {
 		return nil, false
 	}
 
-	out, err := crd.ConvertObject(schema, config, cl.domainSuffix)
+	out, err := ConvertObject(schema, config, cl.domainSuffix)
 	if err != nil {
 		log.Warna(err)
 		return nil, false
@@ -376,7 +375,7 @@ func (cl *Client) Create(config model.Config) (string, error) {
 		return "", multierror.Prefix(err, "validation error:")
 	}
 
-	out, err := crd.ConvertConfig(schema, config)
+	out, err := ConvertConfig(schema, config)
 	if err != nil {
 		return "", err
 	}
@@ -384,7 +383,7 @@ func (cl *Client) Create(config model.Config) (string, error) {
 	obj := knownTypes[schema.Type].object.DeepCopyObject().(IstioObject)
 	err = rc.dynamic.Post().
 		Namespace(out.GetObjectMeta().Namespace).
-		Resource(crd.ResourceName(schema.Plural)).
+		Resource(ResourceName(schema.Plural)).
 		Body(out).
 		Do().Into(obj)
 	if err != nil {
@@ -413,7 +412,7 @@ func (cl *Client) Update(config model.Config) (string, error) {
 		return "", fmt.Errorf("revision is required")
 	}
 
-	out, err := crd.ConvertConfig(schema, config)
+	out, err := ConvertConfig(schema, config)
 	if err != nil {
 		return "", err
 	}
@@ -421,7 +420,7 @@ func (cl *Client) Update(config model.Config) (string, error) {
 	obj := knownTypes[schema.Type].object.DeepCopyObject().(IstioObject)
 	err = rc.dynamic.Put().
 		Namespace(out.GetObjectMeta().Namespace).
-		Resource(crd.ResourceName(schema.Plural)).
+		Resource(ResourceName(schema.Plural)).
 		Name(out.GetObjectMeta().Name).
 		Body(out).
 		Do().Into(obj)
@@ -449,7 +448,7 @@ func (cl *Client) Delete(typ, name, namespace string) error {
 
 	return rc.dynamic.Delete().
 		Namespace(namespace).
-		Resource(crd.ResourceName(schema.Plural)).
+		Resource(ResourceName(schema.Plural)).
 		Name(name).
 		Do().Error()
 }
@@ -472,12 +471,12 @@ func (cl *Client) List(typ, namespace string) ([]model.Config, error) {
 	list := knownTypes[schema.Type].collection.DeepCopyObject().(IstioObjectList)
 	errs := rc.dynamic.Get().
 		Namespace(namespace).
-		Resource(crd.ResourceName(schema.Plural)).
+		Resource(ResourceName(schema.Plural)).
 		Do().Into(list)
 
 	out := make([]model.Config, 0)
 	for _, item := range list.GetItems() {
-		obj, err := crd.ConvertObject(schema, item, cl.domainSuffix)
+		obj, err := ConvertObject(schema, item, cl.domainSuffix)
 		if err != nil {
 			errs = multierror.Append(errs, err)
 		} else {

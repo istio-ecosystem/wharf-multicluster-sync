@@ -1,6 +1,5 @@
-
 // Package model provides an implementation of the MCConfigStore.  It also
-// provides conversion from ServiceExpositionPolicy and 
+// provides conversion from ServiceExpositionPolicy and
 // RemoteServiceBinding to Istio rules that express the policy.
 package model
 
@@ -15,6 +14,9 @@ type MCConfigStore interface {
 
 	// ServiceExpositionPolicies lists all ServiceExpositionPolicy entries
 	ServiceExpositionPolicies() []istio.Config
+
+	// RemoteServiceBindings lists all RemoteServiceBinding entries
+	RemoteServiceBindings() []istio.Config
 }
 
 var (
@@ -28,7 +30,7 @@ var (
 		Validate:    ValidateServiceExpositionPolicy,
 	}
 
-	// ServiceExpositionPolicy describes v1alpha1 multi-cluster exposition policy
+	// RemoteServiceBinding describes v1alpha1 multi-cluster remote service binding
 	RemoteServiceBinding = istio.ProtoSchema{
 		Type:        "remote-service-binding",
 		Plural:      "remote-service-bindings",
@@ -60,6 +62,16 @@ func MakeMCStore(store istio.ConfigStore) MCConfigStore {
 // from the store
 func (store *mcConfigStore) ServiceExpositionPolicies() []istio.Config {
 	configs, err := store.List(ServiceExpositionPolicy.Type, istio.NamespaceAll)
+	if err != nil {
+		return nil
+	}
+	return configs
+}
+
+// RemoteServiceBindings will return all RemoteServiceBinding entries
+// from the store
+func (store *mcConfigStore) RemoteServiceBindings() []istio.Config {
+	configs, err := store.List(RemoteServiceBinding.Type, istio.NamespaceAll)
 	if err != nil {
 		return nil
 	}
