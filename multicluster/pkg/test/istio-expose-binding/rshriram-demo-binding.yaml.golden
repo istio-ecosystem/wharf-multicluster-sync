@@ -1,6 +1,8 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
   name: service-entry-server-rsb
   namespace: default
@@ -20,6 +22,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
   name: dest-rule-server-rsb-ns2
   namespace: default
@@ -36,6 +40,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
   name: istio-egressgateway-server-ns2
   namespace: default
@@ -54,6 +60,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
   name: egressgateway-to-ingressgateway-server-ns2
   namespace: default
@@ -76,6 +84,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
   name: service-entry-ingress-gateway-cluster2
   namespace: default

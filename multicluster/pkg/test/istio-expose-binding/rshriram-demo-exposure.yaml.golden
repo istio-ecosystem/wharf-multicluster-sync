@@ -1,6 +1,8 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: ns2.server-sep
   creationTimestamp: null
   name: dest-rule-server-default-notls
   namespace: ns2
@@ -14,6 +16,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: ns2.server-sep
   creationTimestamp: null
   name: istio-ingressgateway-server-ns2
   namespace: ns2

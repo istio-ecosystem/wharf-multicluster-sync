@@ -1,6 +1,8 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: service-entry-sample1
   namespace: mynamespace
@@ -20,6 +22,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: dest-rule-sample1-my-remote
   namespace: mynamespace
@@ -36,6 +40,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: istio-egressgateway-FooA-my-remote
   namespace: mynamespace
@@ -54,6 +60,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: egressgateway-to-ingressgateway-FooA-my-remote
   namespace: mynamespace
@@ -76,6 +84,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: service-entry-ingress-gateway-clusterC
   namespace: mynamespace

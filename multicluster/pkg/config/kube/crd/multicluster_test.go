@@ -28,7 +28,7 @@ import (
 // debugClusterInfo simulates the function of K8s Cluster Registry
 // https://github.com/kubernetes/cluster-registry in unit tests.
 type debugClusterInfo struct {
-	ips map[string]string
+	ips   map[string]string
 	ports map[string]uint32
 }
 
@@ -150,7 +150,7 @@ func TestBindingToConfiguration(t *testing.T) {
 
 func TestValidation(t *testing.T) {
 	tt := []struct {
-		in  string
+		in       string
 		mustFail bool
 	}{
 		{in: "invalid-exposure.yaml",
@@ -185,13 +185,13 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	
+
 	ci := debugClusterInfo{
-		ips: map[string]string {
+		ips: map[string]string{
 			"clusterC": "127.0.0.1",
 			"cluster2": "127.0.0.1",
 		},
-		ports: map[string]uint32 {
+		ports: map[string]uint32{
 			"clusterC": 80,
 			"cluster2": 80,
 		},
@@ -211,7 +211,7 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -237,7 +237,7 @@ func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []isti
 			writer.Write([]byte("---\n")) // nolint: errcheck
 		}
 	}
-	
+
 	return nil
 }
 

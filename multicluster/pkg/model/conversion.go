@@ -18,10 +18,17 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+const (
+	ProvenanceAnnotationKey = "multicluster.istio.io/provenance"
+	
+	IstioSystemNamespace = istiomodel.IstioSystemNamespace	// TODO handle non-default installs
+)
+
 type ClusterInfo interface {
     Ip(name string) string
     Port(name string) uint32
 }
+
 func remoteServiceNamespace(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
 	if rs.Namespace != "" {
 		return rs.Namespace
@@ -43,7 +50,7 @@ func serviceToServiceEntry(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Remot
 			Version:   istiomodel.ServiceEntry.Version,
 			Name:      fmt.Sprintf("service-entry-%s", config.Name),	// TODO avoid collisions?
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.ServiceEntry{
 			Hosts: []string { rsHostname(rs) },
@@ -58,7 +65,7 @@ func serviceToServiceEntry(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Remot
 			Resolution: v1alpha3.ServiceEntry_DNS,
 			Endpoints: []*v1alpha3.ServiceEntry_Endpoint{
 				&v1alpha3.ServiceEntry_Endpoint {
-					Address: "istio-egressgateway.istio-system.svc.cluster.local", // TODO story for non-default Istio install
+					Address: fmt.Sprintf("istio-egressgateway.%s.svc.cluster.local", IstioSystemNamespace),
 					Ports: map[string]uint32 { "http": 80 },
 				},
 			},
@@ -75,7 +82,7 @@ func serviceToDestinationRule(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Re
 			Version:   istiomodel.DestinationRule.Version,
 			Name:      fmt.Sprintf("dest-rule-%s-%s", config.Name, rs.Namespace),	// TODO avoid collisions?
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.DestinationRule{
 			Host: rsHostname(rs),
@@ -113,7 +120,7 @@ func serviceToGateway(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServ
 			Version:   istiomodel.Gateway.Version,
 			Name:      bindingGatewayName(rs),	// TODO avoid collisions?
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.Gateway{
 			Servers: []*v1alpha3.Server{
@@ -129,7 +136,7 @@ func serviceToGateway(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServ
 					},
 				},
 			},
-			Selector: map[string]string {"istio": "egressgateway"}, // TODO handle non-default install options?
+			Selector: map[string]string {"istio": "egressgateway"},
 		},
 	}
 }
@@ -143,7 +150,7 @@ func serviceToVirtualService(cluster string, rs *v1alpha1.RemoteServiceBinding_R
 			Version:   istiomodel.VirtualService.Version,
 			Name:      fmt.Sprintf("egressgateway-to-ingressgateway-%s-%s", rs.Name, rs.Namespace),	// TODO avoid collisions?
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.VirtualService{
 			Hosts: []string { rsHostname(rs) },
@@ -183,7 +190,7 @@ func clusterToServiceEntry(cluster string, ip string, port uint32, config istiom
 			Version:   istiomodel.ServiceEntry.Version,
 			Name:      fmt.Sprintf("service-entry-ingress-gateway-%s", cluster),
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.ServiceEntry{
 			Hosts: []string { cluster },
@@ -231,7 +238,7 @@ func expositionToDestinationRule(es *v1alpha1.ServiceExpositionPolicy_ExposedSer
 			Version:   istiomodel.DestinationRule.Version,
 			Name:      fmt.Sprintf("dest-rule-%s-default-notls", es.Name),	// TODO avoid collisions?
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.DestinationRule{
 			Host: fmt.Sprintf("%s.default.svc.cluster.local", es.Name),
@@ -277,7 +284,7 @@ func expositionToGateway(es *v1alpha1.ServiceExpositionPolicy_ExposedService, co
 			Version:   istiomodel.Gateway.Version,
 			Name:      exposedServiceGatewayName(es, config),
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.Gateway{
 			Servers: []*v1alpha3.Server{
@@ -293,7 +300,7 @@ func expositionToGateway(es *v1alpha1.ServiceExpositionPolicy_ExposedService, co
 					},
 				},
 			},
-			Selector: map[string]string {"istio": "ingressgateway"}, // TODO handle non-default install options?
+			Selector: map[string]string {"istio": "ingressgateway"},
 		},
 	}, nil
 }
@@ -394,4 +401,21 @@ func ConvertBindingsAndExposures(mcs []istiomodel.Config, ci ClusterInfo) ([]ist
 	}
 	
 	return out, nil
+}
+
+func provenanceAnnotation(config istiomodel.Config) string {
+	return fmt.Sprintf("%s.%s", namespace(config), config.Name)
+}
+
+func namespace(config istiomodel.Config) string {
+	if config.Namespace != "" {
+		return config.Namespace
+	}
+	return v1.NamespaceDefault
+}
+
+func annotations(config istiomodel.Config) map[string]string {
+	return map[string]string {
+		ProvenanceAnnotationKey: provenanceAnnotation(config),
+	}
 }

@@ -1,6 +1,8 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: dest-rule-ServiceA-default-notls
   namespace: mynamespace
@@ -14,6 +16,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
   name: istio-ingressgateway-ServiceA-mynamespace
   namespace: mynamespace
