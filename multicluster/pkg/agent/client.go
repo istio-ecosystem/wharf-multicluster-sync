@@ -22,7 +22,6 @@ const (
 // remote cluster and poll for updates on time intervals. Fetched configuration
 // will be transformed into local RemoteServiceBinding resources.
 type Client struct {
-	shutdown     chan error
 	crdClient    *crd.Client
 	clusterID    string
 	peer         PeerAgent
@@ -37,21 +36,20 @@ func NewClient(clusterID string, peerAgent PeerAgent, client *crd.Client) (*Clie
 		clusterID:    clusterID,
 		peer:         peerAgent,
 		crdClient:    client,
-		shutdown:     make(chan error, 1),
 		pollInterval: pollInterval,
 	}
 	return c, nil
 }
 
 // Run will start...
-func (c *Client) Run() {
+func (c *Client) Run(stopCh chan struct{}) {
 	go func() {
 		// start polling
 		tick := time.Tick(c.pollInterval)
 		for {
 			select {
-			case <-c.shutdown:
-				log.Debug("Shutdown received")
+			case <-stopCh:
+				c.close()
 				return
 			case <-tick:
 				c.update()
@@ -60,10 +58,9 @@ func (c *Client) Run() {
 	}()
 }
 
-// Close cleans up resources used by the server.
-func (c *Client) Close() {
-	c.shutdown <- fmt.Errorf("Shutdown")
-	log.Debug("Agent client closed")
+// cleans up resources used by the server.
+func (c *Client) close() {
+	log.Debug("Agent client stopped")
 }
 
 func (c *Client) update() {
@@ -85,6 +82,7 @@ func (c *Client) update() {
 		log.Errora(err)
 		return
 	}
+	log.Debug("RemoteServiceBinding created for the exposed remote service(s)")
 
 }
 

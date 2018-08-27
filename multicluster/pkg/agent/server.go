@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -16,7 +17,6 @@ import (
 // Server is an agent server meant to listen on a specific port and serve
 // requests coming from client agents on remote clusters.
 type Server struct {
-	shutdown   chan error
 	httpServer http.Server
 	store      model.MCConfigStore
 }
@@ -33,8 +33,7 @@ func NewServer(addr string, port uint16, store model.MCConfigStore) (*Server, er
 			Addr:         fmt.Sprintf("%s:%d", addr, port),
 			Handler:      router,
 		},
-		store:    store,
-		shutdown: make(chan error, 1),
+		store: store,
 	}
 	_ = router.NewRoute().PathPrefix("/exposed/{clusterID}").Methods("GET").HandlerFunc(s.handlePoliciesReq)
 
@@ -45,30 +44,19 @@ func NewServer(addr string, port uint16, store model.MCConfigStore) (*Server, er
 func (s *Server) Run() {
 	go func() {
 		// start serving
-		err := s.httpServer.ListenAndServe()
-		// notify closer we're done
-		s.shutdown <- err
+		if err := s.httpServer.ListenAndServe(); err != nil {
+			log.Errora(err)
+		}
 	}()
-}
-
-// Wait for the server to exit.
-func (s *Server) Wait() {
-	if s.shutdown == nil {
-		// Server is not running
-		return
-	}
-
-	<-s.shutdown
-	s.shutdown = nil
 }
 
 // Close cleans up resources used by the server.
 func (s *Server) Close() {
-	if s.shutdown != nil {
-		s.httpServer.Close()
-		s.Wait()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Errora("Failed to shutdown the HTTP server", err)
 	}
-
+	cancel()
 	log.Debug("Agent server closed")
 }
 

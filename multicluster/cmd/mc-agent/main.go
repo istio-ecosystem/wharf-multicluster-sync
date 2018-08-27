@@ -97,10 +97,10 @@ func main() {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
-	stopCtrl := make(chan struct{})
+	stopCh := make(chan struct{})
 
 	log.Debug("Starting controller..")
-	go ctl.Run(stopCtrl)
+	go ctl.Run(stopCh)
 
 	log.Debugf("Starting agent listener on port %d..", port)
 	server, err := agent.NewServer("", uint16(port), store)
@@ -114,18 +114,15 @@ func main() {
 			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
 			continue
 		}
-		go client.Run()
+		go client.Run(stopCh)
 		clients = append(clients, client)
 	}
 
 	<-shutdown
 	log.Debug("Shutting down the Multi-Cluster agent")
 
-	close(stopCtrl)
+	close(stopCh)
 	server.Close()
-	for _, client := range clients {
-		client.Close()
-	}
 
 	_ = log.Sync()
 }
