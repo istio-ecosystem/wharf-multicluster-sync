@@ -10,8 +10,9 @@ type ExposedServices struct {
 // ExposedService holds description of an exposed service that is visible to
 // remote clusters.
 type ExposedService struct {
-	Name string
-	Port uint16
+	Name      string
+	Namespace string
+	Port      uint16
 }
 
 type PeerAgent struct {

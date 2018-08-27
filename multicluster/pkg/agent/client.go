@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
@@ -117,11 +118,12 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.
 	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
 	for i, service := range exposed.Services {
 		services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
-			Name:  service.Name,
-			Alias: service.Name,
+			Name:      service.Name,
+			Alias:     service.Name,
+			Namespace: service.Namespace,
 		}
 	}
-	name := c.peer.ID + "-services"
+	name := strings.ToLower(c.peer.ID) + "-services"
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:      model.RemoteServiceBinding.Type,

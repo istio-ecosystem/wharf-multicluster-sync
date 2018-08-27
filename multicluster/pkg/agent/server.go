@@ -100,7 +100,8 @@ func (s *Server) exposedServices(clusterID string) []*ExposedService {
 					exposedName = exposed.Name
 				}
 				results = append(results, &ExposedService{
-					Name: exposedName,
+					Name:      exposedName,
+					Namespace: policy.Namespace,
 				})
 			}
 		}
