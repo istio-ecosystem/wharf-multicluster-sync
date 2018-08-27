@@ -2,7 +2,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
   creationTimestamp: null
-  name: service-entry-server
+  name: service-entry-server-rsb
   namespace: default
 spec:
   endpoints:
@@ -21,7 +21,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
   creationTimestamp: null
-  name: dest-rule-server-ns2
+  name: dest-rule-server-rsb-ns2
   namespace: default
 spec:
   host: server.ns2.svc.cluster.global

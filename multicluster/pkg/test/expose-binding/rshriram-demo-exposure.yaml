@@ -2,7 +2,7 @@
 apiVersion: multicluster.istio.io/v1alpha1
 kind: ServiceExpositionPolicy
 metadata:
-  name: server
+  name: server-sep
   namespace: ns2
 spec:
   exposed:

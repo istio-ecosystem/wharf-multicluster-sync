@@ -2,7 +2,7 @@
 apiVersion: multicluster.istio.io/v1alpha1
 kind: RemoteServiceBinding
 metadata:
-  name: server
+  name: server-rsb
 spec:
   remote:
   - cluster: cluster2
