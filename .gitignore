@@ -7,3 +7,5 @@ multicluster/pkg/test/istio-expose-binding/*.yaml
 # Binaries we build
 multicluster/cmd/mc-cli/mc-cli
 
+# Emacs temp files
+*~

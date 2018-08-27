@@ -31,8 +31,7 @@ spec:
       name: server-ns2-80
       number: 80
       protocol: TLS
-    tls:
-      mode: SIMPLE
+    tls: {}
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService

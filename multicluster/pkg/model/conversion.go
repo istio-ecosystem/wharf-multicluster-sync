@@ -296,7 +296,7 @@ func expositionToGateway(es *v1alpha1.ServiceExpositionPolicy_ExposedService, co
 					},
 					Hosts: []string { fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), getNamespace(config)) },
 					Tls: &v1alpha3.Server_TLSOptions{
-						Mode: v1alpha3.Server_TLSOptions_SIMPLE,
+						Mode: v1alpha3.Server_TLSOptions_PASSTHROUGH,
 					},
 				},
 			},
