@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
+
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
@@ -27,17 +29,22 @@ type Client struct {
 	clusterID    string
 	peer         PeerAgent
 	pollInterval time.Duration
+
+	store       *model.MCConfigStore
+	clusterInfo DebugClusterInfo
 }
 
 // NewClient will create a new agent client that connects to a peered server on
 // the specified address:port and fetch current exposition policies. The client
 // will start polling only when the Run() function is called.
-func NewClient(clusterID string, peerAgent PeerAgent, client *crd.Client) (*Client, error) {
+func NewClient(clusterID string, peerAgent PeerAgent, client *crd.Client, store *model.MCConfigStore, clusterInfo DebugClusterInfo) (*Client, error) {
 	c := &Client{
 		clusterID:    clusterID,
 		peer:         peerAgent,
 		crdClient:    client,
 		pollInterval: pollInterval,
+		store:        store,
+		clusterInfo:  clusterInfo,
 	}
 	return c, nil
 }
@@ -78,13 +85,21 @@ func (c *Client) update() {
 	}
 
 	binding := c.exposedServicesToBinding(exposed)
-	_, err = c.crdClient.Create(*binding)
+	c.createRemoteServiceBinding(binding)
+}
+
+func (c *Client) createRemoteServiceBinding(binding *istiomodel.Config) {
+	// First use the API server to create the new binding
+	_, err := c.crdClient.Create(*binding)
 	if err != nil {
 		log.Errora(err)
 		return
 	}
 	log.Debug("RemoteServiceBinding created for the exposed remote service(s)")
 
+	// User the reconcile to generate the inferred Istio configs for the new binding
+	added, modified, err := reconcile.AddMulticlusterConfig(*c.store, *binding, c.clusterInfo)
+	PrintReconcileAddResults(added, modified, err)
 }
 
 func (c *Client) callPeer() (*ExposedServices, error) {

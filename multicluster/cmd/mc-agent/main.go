@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
+	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
 
 	"istio.io/istio/pilot/pkg/config/memory"
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
 	"istio.io/istio/pkg/log"
-
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	// Importing the API messages so that when resource events are fired the
 	// resource will be parsed into a message object
@@ -37,7 +37,8 @@ var (
 	peers       []agent.PeerAgent
 	hasDemoPeer bool
 
-	store mcmodel.MCConfigStore
+	store       mcmodel.MCConfigStore
+	clusterInfo agent.DebugClusterInfo
 )
 
 func main() {
@@ -53,6 +54,7 @@ func main() {
 	if hasDemoPeer {
 		demoClusterPeer()
 	}
+	clusterInfo = demoClusterInfo()
 
 	// Setting up an in-memory config store for the agent
 	store = mcmodel.MakeMCStore(memory.Make(mcmodel.MultiClusterConfigTypes))
@@ -82,10 +84,16 @@ func main() {
 			log.Debugf("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Adding it to the config store..")
 			store.Create(config)
+			log.Debug("Reconciling..")
+			added, modified, err := reconcile.AddMulticlusterConfig(store, config, clusterInfo)
+			agent.PrintReconcileAddResults(added, modified, err)
 		case model.EventDelete:
 			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Deleting it from the config store..")
 			store.Delete(config.Type, config.Name, config.Namespace)
+			log.Debug("Reconciling..")
+			deleted, err := reconcile.DeleteMulticlusterConfig(store, config, clusterInfo)
+			agent.PrintReconcileDeleteResults(deleted, err)
 		case model.EventUpdate:
 			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Updating it in the config store..")
@@ -109,7 +117,7 @@ func main() {
 	log.Debugf("Starting agent clients. Number of peers: %d", len(peers))
 	clients := []*agent.Client{}
 	for _, peer := range peers {
-		client, err := agent.NewClient(id, peer, cl)
+		client, err := agent.NewClient(id, peer, cl, &store, clusterInfo)
 		if err != nil {
 			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
 			continue
@@ -125,6 +133,19 @@ func main() {
 	server.Close()
 
 	_ = log.Sync()
+}
+
+func demoClusterInfo() agent.DebugClusterInfo {
+	return agent.DebugClusterInfo{
+		IPs: map[string]string{
+			"clusterA": "127.0.0.1",
+			"clusterB": "127.0.0.1",
+		},
+		Ports: map[string]uint32{
+			"clusterA": 80,
+			"clusterB": 80,
+		},
+	}
 }
 
 func demoClusterPeer() {

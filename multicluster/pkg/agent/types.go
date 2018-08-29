@@ -20,3 +20,24 @@ type PeerAgent struct {
 	Address string
 	Port    uint16
 }
+
+type DebugClusterInfo struct {
+	IPs   map[string]string
+	Ports map[string]uint32
+}
+
+func (ci DebugClusterInfo) Ip(name string) string {
+	out, ok := ci.IPs[name]
+	if ok {
+		return out
+	}
+	return "255.255.255.255" // dummy value for unknown clusters
+}
+
+func (ci DebugClusterInfo) Port(name string) uint32 {
+	out, ok := ci.Ports[name]
+	if ok {
+		return out
+	}
+	return 8080 // dummy value for unknown clusters
+}
