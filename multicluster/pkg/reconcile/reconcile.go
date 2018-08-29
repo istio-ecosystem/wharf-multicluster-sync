@@ -4,7 +4,7 @@
 // disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 // Copyright 2018 IBM Corporation
 
-package crd
+package reconcile
 
 import (
 	"fmt"
