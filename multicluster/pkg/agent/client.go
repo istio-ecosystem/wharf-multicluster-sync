@@ -30,7 +30,7 @@ type Client struct {
 	peer         PeerAgent
 	pollInterval time.Duration
 
-	store       *model.MCConfigStore
+	store       model.MCConfigStore
 	clusterInfo DebugClusterInfo
 }
 
@@ -43,7 +43,7 @@ func NewClient(clusterID string, peerAgent PeerAgent, client *crd.Client, store 
 		peer:         peerAgent,
 		crdClient:    client,
 		pollInterval: pollInterval,
-		store:        store,
+		store:        *store,
 		clusterInfo:  clusterInfo,
 	}
 	return c, nil
@@ -77,13 +77,40 @@ func (c *Client) update() {
 		log.Debugf("Peer agent [%s] is not accessible. %v", c.peer.ID, err)
 		return
 	}
-	log.Debugf("Number of exposed services on cluster [%s]: %d", c.peer.ID, len(exposed.Services))
 
-	if !c.needsUpdate(exposed) {
-		log.Debug("Nothing changed on peered cluster")
+	// If returned query response is 0 exposed services it can either be that
+	// all exposed services were removed or there weren't any in the first
+	// place.
+	if len(exposed.Services) == 0 {
+		// If all previously exposed services were removed we cleanup all
+		// related Istio configs and the relevant RemoteServiceBinding
+		if rsb := c.remoteServiceBinding(); rsb != nil {
+			log.Debugf("Peer [%s] removed all exposed services", c.peer.ID)
+			// First use the API server to create the new binding
+			err := c.crdClient.Delete(rsb.Type, rsb.Name, rsb.Namespace)
+			if err != nil {
+				log.Errora(err)
+			}
+			// Peer removed all exposed services therefore no need for the RSB
+			c.store.Delete(rsb.Type, rsb.Name, rsb.Namespace)
+			if err != nil {
+				log.Errora(err)
+			}
+			log.Debugf("RemoteServiceVinfing deleted for cluser [%s] deleted", c.peer.ID)
+
+			// Use the reconcile to generate the inferred Istio configs for the new binding
+			deleted, err := reconcile.DeleteMulticlusterConfig(c.store, *rsb, c.clusterInfo)
+			PrintReconcileDeleteResults(deleted, err)
+		}
 		return
 	}
 
+	if !c.needsUpdate(exposed) {
+		// Nothing changed on peered cluster since last check
+		return
+	}
+
+	// TODO handle updates
 	binding := c.exposedServicesToBinding(exposed)
 	c.createRemoteServiceBinding(binding)
 }
@@ -97,8 +124,11 @@ func (c *Client) createRemoteServiceBinding(binding *istiomodel.Config) {
 	}
 	log.Debug("RemoteServiceBinding created for the exposed remote service(s)")
 
-	// User the reconcile to generate the inferred Istio configs for the new binding
-	added, modified, err := reconcile.AddMulticlusterConfig(*c.store, *binding, c.clusterInfo)
+	// Add it to the config store
+	c.store.Create(*binding)
+
+	// Use the reconcile to generate the inferred Istio configs for the new binding
+	added, modified, err := reconcile.AddMulticlusterConfig(c.store, *binding, c.clusterInfo)
 	PrintReconcileAddResults(added, modified, err)
 }
 
@@ -123,20 +153,29 @@ func (c *Client) callPeer() (*ExposedServices, error) {
 }
 
 func (c *Client) needsUpdate(exposed *ExposedServices) bool {
-	if len(exposed.Services) == 0 {
-		return false
+	current := c.store.RemoteServiceBindings()
+	for _, rsb := range current {
+		spec, _ := rsb.Spec.(*v1alpha1.RemoteServiceBinding)
+		for _, remote := range spec.Remote {
+			if remote.Cluster == c.peer.ID { // found it
+				// TODO check for services updates
+				return len(remote.Services) != len(exposed.Services)
+			}
+		}
 	}
 	return true
 }
 
 func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.Config {
 	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
+	ns := ""
 	for i, service := range exposed.Services {
 		services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
 			Name:      service.Name,
 			Alias:     service.Name,
 			Namespace: service.Namespace,
 		}
+		ns = service.Namespace
 	}
 	name := strings.ToLower(c.peer.ID) + "-services"
 	return &istiomodel.Config{
@@ -145,7 +184,7 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.
 			Group:     model.RemoteServiceBinding.Group,
 			Version:   model.RemoteServiceBinding.Version,
 			Name:      name,
-			Namespace: "",
+			Namespace: ns,
 		},
 		Spec: &v1alpha1.RemoteServiceBinding{
 			Remote: []*v1alpha1.RemoteServiceBinding_RemoteCluster{
@@ -156,4 +195,19 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.
 			},
 		},
 	}
+}
+
+// Go through the RemoteServiceBindings in the store and find the one
+// relevant for the peered cluster.
+// TODO handle more than one RemoteServiceBinding for the cluster
+func (c *Client) remoteServiceBinding() *istiomodel.Config {
+	for _, rsb := range c.store.RemoteServiceBindings() {
+		spec, _ := rsb.Spec.(*v1alpha1.RemoteServiceBinding)
+		for _, remote := range spec.Remote {
+			if remote.Cluster == c.peer.ID { // found it
+				return &rsb
+			}
+		}
+	}
+	return nil
 }

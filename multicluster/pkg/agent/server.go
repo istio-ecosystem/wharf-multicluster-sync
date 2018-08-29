@@ -67,7 +67,6 @@ func (s *Server) Close() {
 func (s *Server) handlePoliciesReq(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	clusterID := vars["clusterID"]
-	log.Debugf("Got request for policies from cluster: %s", clusterID)
 
 	if !s.isTrustedCluster(clusterID) {
 		err := fmt.Errorf("Operation can not be completed. Cluster not identified")

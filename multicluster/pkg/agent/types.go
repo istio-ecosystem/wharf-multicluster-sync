@@ -15,6 +15,7 @@ type ExposedService struct {
 	Port      uint16
 }
 
+// PeerAgent holds relevant information about a peered cluster
 type PeerAgent struct {
 	ID      string
 	Address string
