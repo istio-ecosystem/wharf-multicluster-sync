@@ -8,12 +8,14 @@ package reconcile
 
 import (
 	"fmt"
+	"reflect"
+
+	multierror "github.com/hashicorp/go-multierror"
 
 	istiomodel "istio.io/istio/pilot/pkg/model"
+	"istio.io/istio/pkg/log"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
-
-	"reflect"
 )
 
 // AddMulticlusterConfig takes an Istio config store and a new RemoteServiceBinding or ServiceExpositionPolicy
@@ -70,6 +72,7 @@ func ModifyMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Co
 // Only the Type, Name, and Namespace of the output configs is guarenteed usable.
 func DeleteMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, error) {
 
+	var err error
 	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{config}, ci)
 	if err != nil {
 		return nil, err
@@ -77,14 +80,23 @@ func DeleteMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Co
 
 	outDeletions := make([]istiomodel.Config, 0)
 	for _, istioConfig := range istioConfigs {
-		_, ok := store.Get(istioConfig.Type, istioConfig.Name, istioConfig.Namespace)
+		orig, ok := store.Get(istioConfig.Type, istioConfig.Name, istioConfig.Namespace)
 		if !ok {
-			return nil, fmt.Errorf("Expected to delete Istio config but %#v makes an unknown config %#v", config, istioConfig)
+			err = multierror.Append(err, fmt.Errorf("%s %s.%s should have been realized by %s %s.%s; skipping",
+				config.Type, config.Name, config.Namespace,
+				istioConfig.Type, istioConfig.Name, istioConfig.Namespace))
 		} else {
-			istioConfig.Spec = nil // Don't let caller see the details, their job is to delete based on Kind and Name
-			outDeletions = append(outDeletions, istioConfig)
+			// Only delete if our annotation is present
+			_, ok := orig.Annotations[model.ProvenanceAnnotationKey]
+			if ok {
+				istioConfig.Spec = nil // Don't let caller see the details, their job is to delete based on Kind and Name
+				outDeletions = append(outDeletions, istioConfig)
+			} else {
+				log.Infof("Ignoring unprovenanced %s %s.%s when reconciling deletion",
+					istioConfig.Type, istioConfig.Name, istioConfig.Namespace)
+			}
 		}
 	}
 
-	return outDeletions, nil
+	return outDeletions, err
 }

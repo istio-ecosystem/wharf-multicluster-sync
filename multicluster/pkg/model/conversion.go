@@ -318,7 +318,7 @@ func expositionToVirtualService(es *v1alpha1.ServiceExpositionPolicy_ExposedServ
 			Version:   istiomodel.VirtualService.Version,
 			Name:      fmt.Sprintf("ingressgateway-to-%s-%s", es.Name, getNamespace(config)),
 			Namespace: config.Namespace,
-			// TODO Annotate with provenance
+			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.VirtualService{
 			Hosts: []string { esHostname(config, es) },

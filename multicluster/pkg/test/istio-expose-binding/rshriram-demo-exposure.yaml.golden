@@ -36,6 +36,8 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
+  annotations:
+    multicluster.istio.io/provenance: ns2.server-sep
   creationTimestamp: null
   name: ingressgateway-to-server-ns2
   namespace: ns2
