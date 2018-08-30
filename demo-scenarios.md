@@ -1,56 +1,38 @@
 # MultiCluster Demos 
 
-## Basic Scenarios with the Bookinfo sample application
+## Basic Scenarios with the Bookinfo sample application (3 clusters)
 
-## Proposed Alternative Scenarios
-This is a proposed modification to Fabio's original suggestion (see [below](#original-proposed-scenarios))
-This proposed version of the demo (a) demonstrates the same things as the original, (b) avoids the need to reset between scenarios, and (c) allows us to explicitly demonstrate the work needed to expose a service and for a client to bind to it. The original demo scenario is maintained below if we wish to use it.
+## Background
 
-### _Scenario 1_: Using a service (_reviews_) on a remote cluster
+Three peer organizations, _org1_, _org2_, and _org3_ control their own individual clusters, referred to as _cluster1_, _cluster2_, and _cluster3_, respectively.
 
-1. Start with services _productpage_ and _details_ running on _cluster1_ 
-2. Start with services _reviews-v1_ and _reviews-v2_ running on _cluster2_.
-3. Note that the service _ratings_ is not running.
-4. Demonstrate the _bookinfo_ application. The _bookinfo_ app will partially run without _reviews-v1_ and _reviews-v2_.
-5. Cluster admin/operator exposes _review_ services on _cluster2_ to be consumed for the multicluster istio mesh.
-6. Refresh the _bookinfo_ application it will run with _review-v1_ and _review-v2_ round robin.   (Note: the productpage service can automatically pick up and bind the exposed review services from cluster 2.). Traffic will, by default, be sent to instances of both _reviews-v1_ and _reviews-v2_. The traffic to _reviews-v1_ will work without error. The traffic to _reviews-v2_ should display an error since the service _ratings_ is not available.
-7. Optionally: cluster admin/operator removed the expose policy to expose _review_ services on _cluster2_.  Refresh _bookinfo_, it will partially run without _reviews-v1_ and _reviews-v2_.
+### The inception of the _Bookinfo_ application
 
+In _org1_, a developer team is resposible for creating the _Bookinfo_ application. They start by creating 2 microservices, namely, _productpage_ and _details_. They learn about a microservice made available by a team from _org2_ and decide to use it. Thus, the first version of _bookinfo_ is finished, which uses the version 1 of the _reviews_ service (_reviews-v1_) made available by _org2_. 
 
-### _Scenario 2_: Exposing a service on a remote cluster
+**Demo steps:**
 
-1. Deploy service _ratings_ to _cluster3_
-2. Expose service _ratings_ on _cluster3_
-3. Bind service _reviews-v2_ (on _cluster2_) to the remote service _ratings_ (on _cluster3_)
-4. Demonstrate the _bookinfo_ application
+1. Start with services _productpage_ and _details_ running on _cluster1_.
+2. Start with service _reviews-v1_ running on _cluster2_.
+3. Expose _reviews-v1_ on _cluster2_.
+4. Bind _productpage_ (on _cluster1_) to _reviews-v1_ (on _cluster2_).
+5. Show the _Bookinfo_ running with _productpage_, _details_, and _reviews-v1_.
 
-Traffic will, by default, be sent to instances of both _reviews-v1_ and _reviews-v2_. The traffic to both should now work error free.
+### New version of _reviews_ is available
 
-### _Scenario 3_: Demonstate service owners ability to split traffic to multiple versions
+In _org2_, the dev team of _reviews_ learns about the _ratings_ service made available by _org3_. So, they decide to build a new version of their service (_reviews-v2_) which takes advantage of the _ratings_ service provided by _org3_. The new version of reviews is then made available by _org3_.
 
-1. Define a `DestinationRule` to route traffic from _productpage_ to _reviews-v2_.
-2. Demonstrate with _bookinfo_ application.
+**Demo steps:**
 
-### _Scenario 4_: (3 clusters): TBD
+1. Make sure _ratings_ is running on _cluster3_.
+2. Expose _reviews-2_ on _cluster2_.
+3. Using the _Bookinfo_ application, show that by defaul traffic is split between _reviews-v1_ and _reviews-v2_ in a round-robin fashion. Note that the new version of a service available on _cluster2_ was automatically picked up by _cluster1_.
 
+### Dev team of _producpage_ decides to use _reviews-v2_ only
 
-## Original Proposed Scenarios
+In _org1_, the developers of _productpage_, aware of _reviews-v2_, decide to stop using _reviews-v1_.
 
-### _Scenario 1_ (2 clusters): Using a service available in a remote cluster
+**Demo steps:**
 
-1. Start with the services _productpage_, _details_, and reviews-v1_ running on _cluster1_.
-2. Start with the _ratings_ service running on _cluster2_.
-3. Now, the owners of the _reviews_ service want to upgrade to version 2 (_reviews-v2_). In doing so, they will point _reviews-v2_
-to the _ratings_ service already available on _cluster2_. Result: _reviews_ running on _cluster1_ will communicate 
-with _ratings_ running on _cluster2_.
-
-
-### _Scenario 2_ (2 clusters): Traffic splitting
-
-1. Start with the services _productpage_ and _details_ running on _cluster1_.
-2. Start with the services _reviews_ (all 3 versions) and _ratings_ running on _cluster2_.
-3. Show that we can split the traffic across all versions of _reviews_. Result: _productpage_ running on _cluster1_
-will talk to all versions of _reviews_ running on _cluster2_.
-
-### _Scenario 3_ (3 clusters): TBD
-
+1. From _cluster1_, create a destination rule to use only _reviews-v2_.
+2. Show the result by using the _Bookinfo_ application.
