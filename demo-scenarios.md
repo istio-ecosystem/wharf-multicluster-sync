@@ -13,9 +13,9 @@ This proposed version of the demo (a) demonstrates the same things as the origin
 3. Note that the service _ratings_ is not running.
 4. Demonstrate the _bookinfo_ application. The _bookinfo_ app will partially run without _reviews-v1_ and _reviews-v2_.
 5. Cluster admin/operator exposes _review_ services on _cluster2_ to be consumed for the multicluster istio mesh.
-6. Refresh the _bookinfo_app, it will run with _review-v1_ and _review-v2_ round robin.   (Note: the productpage service can automatically pick up and bind the exposed review services from cluster 2.)
+6. Refresh the _bookinfo_ application it will run with _review-v1_ and _review-v2_ round robin.   (Note: the productpage service can automatically pick up and bind the exposed review services from cluster 2.). Traffic will, by default, be sent to instances of both _reviews-v1_ and _reviews-v2_. The traffic to _reviews-v1_ will work without error. The traffic to _reviews-v2_ should display an error since the service _ratings_ is not available.
+7. Optionally: cluster admin/operator removed the expose policy to expose _review_ services on _cluster2_.  Refresh _bookinfo_, it will partially run without _reviews-v1_ and _reviews-v2_.
 
-Traffic will, by default, be sent to instances of both _reviews-v1_ and _reviews-v2_. The traffic to _reviews-v1_ will work without error. That to _reviews-v2_ should display an error since the service _ratings_ is not available.
 
 ### _Scenario 2_: Exposing a service on a remote cluster
 
