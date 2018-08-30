@@ -13,15 +13,10 @@ In _org1_, a developer team is responsible for creating the _Bookinfo_ applicati
 **Demo steps:**
 
 1. Start with services _productpage_ and _details_ running on _cluster1_.
-
 2. Start with service _reviews-v1_ running on _cluster2_.
-
 3. Expose _reviews-v1_ on _cluster2_.
-
 4. From _cluster1_, show all available services available on _cluster2_. (Note that this assumes we can do this either manually, as suggested by this step, or automatically. Other parts of the demo (see below) will demonstrate the automatic configuration.)
-
 5. Bind _productpage_ (on _cluster1_) to _reviews-v1_ (on _cluster2_). (Again, this assumes we can do it manually.)
-
 6. Show _Bookinfo_ running with _productpage_, _details_, and _reviews-v1_.
 
 ### New version of _reviews_ is available
