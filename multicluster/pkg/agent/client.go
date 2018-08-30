@@ -25,26 +25,24 @@ const (
 // remote cluster and poll for updates on time intervals. Fetched configuration
 // will be transformed into local RemoteServiceBinding resources.
 type Client struct {
+	config       *ClusterConfig
+	peer         *ClusterConfig
 	crdClient    *crd.Client
-	clusterID    string
-	peer         PeerAgent
 	pollInterval time.Duration
 
-	store       model.MCConfigStore
-	clusterInfo DebugClusterInfo
+	store model.MCConfigStore
 }
 
 // NewClient will create a new agent client that connects to a peered server on
 // the specified address:port and fetch current exposition policies. The client
 // will start polling only when the Run() function is called.
-func NewClient(clusterID string, peerAgent PeerAgent, client *crd.Client, store *model.MCConfigStore, clusterInfo DebugClusterInfo) (*Client, error) {
+func NewClient(config *ClusterConfig, peer *ClusterConfig, client *crd.Client, store *model.MCConfigStore) (*Client, error) {
 	c := &Client{
-		clusterID:    clusterID,
-		peer:         peerAgent,
+		config:       config,
+		peer:         peer,
 		crdClient:    client,
 		pollInterval: pollInterval,
 		store:        *store,
-		clusterInfo:  clusterInfo,
 	}
 	return c, nil
 }
@@ -99,7 +97,7 @@ func (c *Client) update() {
 			log.Debugf("RemoteServiceVinfing deleted for cluser [%s] deleted", c.peer.ID)
 
 			// Use the reconcile to generate the inferred Istio configs for the new binding
-			deleted, err := reconcile.DeleteMulticlusterConfig(c.store, *rsb, c.clusterInfo)
+			deleted, err := reconcile.DeleteMulticlusterConfig(c.store, *rsb, c.config)
 			PrintReconcileDeleteResults(deleted, err)
 		}
 		return
@@ -128,12 +126,12 @@ func (c *Client) createRemoteServiceBinding(binding *istiomodel.Config) {
 	c.store.Create(*binding)
 
 	// Use the reconcile to generate the inferred Istio configs for the new binding
-	added, modified, err := reconcile.AddMulticlusterConfig(c.store, *binding, c.clusterInfo)
+	added, modified, err := reconcile.AddMulticlusterConfig(c.store, *binding, c.config)
 	PrintReconcileAddResults(added, modified, err)
 }
 
 func (c *Client) callPeer() (*ExposedServices, error) {
-	url := fmt.Sprintf("http://%s:%d/exposed/%s", c.peer.Address, c.peer.Port, c.clusterID)
+	url := fmt.Sprintf("http://%s:%d/exposed/%s", c.peer.AgentIP, c.peer.AgentPort, c.config.ID)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

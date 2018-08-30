@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,30 +33,26 @@ var (
 	namespace  string
 	kubeconfig string
 	context    string
-	id         string
-	port       int
+	configJSON string
 
-	peers       []agent.PeerAgent
-	hasDemoPeer bool
-
-	store       mcmodel.MCConfigStore
-	clusterInfo agent.DebugClusterInfo
+	store         mcmodel.MCConfigStore
+	clusterConfig agent.ClusterConfig
 )
 
 func main() {
 	flag.Parse()
 
-	if id == "" {
-		log.Error("Cluster ID must be provided with the -id flag")
+	if configJSON == "" {
+		log.Error("Cluster configuration JSON file must be provided with the -configJson flag")
 		return
 	}
 
-	// TODO For internal demo purposes only. Should be removed and read peers configuration
-	// from a file or custom resource.
-	if hasDemoPeer {
-		demoClusterPeer()
+	// Load the cluster config from the provided json file
+	clusterConfig, err := loadConfig(configJSON)
+	if err != nil {
+		log.Errora(err)
+		return
 	}
-	clusterInfo = demoClusterInfo()
 
 	// Setting up an in-memory config store for the agent
 	store = mcmodel.MakeMCStore(memory.Make(mcmodel.MultiClusterConfigTypes))
@@ -85,14 +83,14 @@ func main() {
 			log.Debug("Adding it to the config store..")
 			store.Create(config)
 			log.Debug("Reconciling..")
-			added, modified, err := reconcile.AddMulticlusterConfig(store, config, clusterInfo)
+			added, modified, err := reconcile.AddMulticlusterConfig(store, config, clusterConfig)
 			agent.PrintReconcileAddResults(added, modified, err)
 		case model.EventDelete:
 			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Deleting it from the config store..")
 			store.Delete(config.Type, config.Name, config.Namespace)
 			log.Debug("Reconciling..")
-			deleted, err := reconcile.DeleteMulticlusterConfig(store, config, clusterInfo)
+			deleted, err := reconcile.DeleteMulticlusterConfig(store, config, clusterConfig)
 			agent.PrintReconcileDeleteResults(deleted, err)
 		case model.EventUpdate:
 			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
@@ -110,14 +108,14 @@ func main() {
 	log.Debug("Starting controller..")
 	go ctl.Run(stopCh)
 
-	log.Debugf("Starting agent listener on port %d..", port)
-	server, err := agent.NewServer("localhost", uint16(port), store)
+	log.Debugf("Starting agent listener on port %d..", clusterConfig.AgentPort)
+	server, err := agent.NewServer(clusterConfig.AgentIP, clusterConfig.AgentPort, store)
 	go server.Run()
 
-	log.Debugf("Starting agent clients. Number of peers: %d", len(peers))
+	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))
 	clients := []*agent.Client{}
-	for _, peer := range peers {
-		client, err := agent.NewClient(id, peer, cl, &store, clusterInfo)
+	for _, peer := range clusterConfig.Peers {
+		client, err := agent.NewClient(clusterConfig, &peer, cl, &store)
 		if err != nil {
 			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
 			continue
@@ -135,26 +133,22 @@ func main() {
 	_ = log.Sync()
 }
 
-func demoClusterInfo() agent.DebugClusterInfo {
-	return agent.DebugClusterInfo{
-		IPs: map[string]string{
-			"clusterA": "127.0.0.1",
-			"clusterB": "127.0.0.1",
-		},
-		Ports: map[string]uint32{
-			"clusterA": 80,
-			"clusterB": 80,
-		},
+// loadConfig will load the cluster configuration from the provided JSON file
+func loadConfig(file string) (*agent.ClusterConfig, error) {
+	jsonFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
 	}
-}
+	defer jsonFile.Close()
 
-func demoClusterPeer() {
-	peer := agent.PeerAgent{
-		ID:      "clusterB",
-		Address: "localhost",
-		Port:    8999,
+	var config agent.ClusterConfig
+	bytes, _ := ioutil.ReadAll(jsonFile)
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		return nil, err
 	}
-	peers = append(peers, peer)
+
+	return &config, nil
 }
 
 func init() {
@@ -166,13 +160,8 @@ func init() {
 		return
 	}
 
-	flag.StringVar(&id, "id", "", "Required. Cluster ID where the agent is running.")
-	flag.IntVar(&port, "port", 8999, "Listen port for the agent to listen on.")
+	flag.StringVar(&configJSON, "configJson", "", "Config JSON file to use for the agent configuration")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&context, "context", "", "Kubeconfig context to be used. Only required if out-of-cluster.")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch. Default (or empty string) is all namespaces.")
-
-	flag.BoolVar(&hasDemoPeer, "hasDemoPeer", false, "Demo purposes only. To be removed.")
-
-	peers = []agent.PeerAgent{}
 }

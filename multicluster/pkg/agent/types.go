@@ -15,30 +15,42 @@ type ExposedService struct {
 	Port      uint16
 }
 
-// PeerAgent holds relevant information about a peered cluster
-type PeerAgent struct {
-	ID      string
-	Address string
-	Port    uint16
+// ClusterConfig holds all the configuration information about the local
+// cluster as well as the peered remote clusters.
+type ClusterConfig struct {
+	ID string `json:"id"`
+
+	GatewayIP   string `json:"gatewayIP"`
+	GatewayPort uint16 `json:"gatewayPort"`
+
+	AgentIP   string `json:"agentIP"`
+	AgentPort uint16 `json:"agentPort"`
+
+	Peers []ClusterConfig `json:"peers,omitempty"`
 }
 
-type DebugClusterInfo struct {
-	IPs   map[string]string
-	Ports map[string]uint32
-}
-
-func (ci DebugClusterInfo) Ip(name string) string {
-	out, ok := ci.IPs[name]
-	if ok {
-		return out
+// Ip is implementing the model.ClusterInfo interface
+func (cc ClusterConfig) Ip(name string) string {
+	if name == cc.ID {
+		return cc.GatewayIP
+	}
+	for _, peer := range cc.Peers {
+		if name == peer.ID {
+			return peer.GatewayIP
+		}
 	}
 	return "255.255.255.255" // dummy value for unknown clusters
 }
 
-func (ci DebugClusterInfo) Port(name string) uint32 {
-	out, ok := ci.Ports[name]
-	if ok {
-		return out
+// Port is implementing the model.ClusterInfo interface
+func (cc ClusterConfig) Port(name string) uint32 {
+	if name == cc.ID {
+		return uint32(cc.GatewayPort)
+	}
+	for _, peer := range cc.Peers {
+		if name == peer.ID {
+			return uint32(peer.GatewayPort)
+		}
 	}
 	return 8080 // dummy value for unknown clusters
 }

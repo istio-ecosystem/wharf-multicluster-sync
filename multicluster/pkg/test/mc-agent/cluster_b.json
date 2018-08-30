@@ -1,0 +1,7 @@
+{
+    "id": "clusterB",
+    "gatewayIP": "127.0.0.1",
+    "gatewayPort": 80,
+    "agentIP": "localhost",
+    "agentPort": 8999
+}
