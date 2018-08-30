@@ -2,7 +2,8 @@
 
 ## Basic Scenarios with the Bookinfo sample application
 
-## Proposed Alternative
+## Proposed Alternative Scenarios
+This is a proposed modification to Fabio's original suggestion (see [below](#original-proposed-scenarios))
 This proposed version of the demo (a) demonstrates the same things as the original, (b) avoids the need to reset between scenarios, and (c) allows us to explicitly demonstrate the work needed to expose a service and for a client to bind to it. The original demo scenario is maintained below if we wish to use it.
 
 ### _Scenario 1_: Using a service (_reviews_) on a remote cluster
@@ -28,8 +29,10 @@ Traffic will, by default, be sent to instances of both _reviews-v1_ and _reviews
 1. Define a `DestinationRule` to route traffic from _productpage_ to _reviews-v2_.
 2. Demonstrate with _bookinfo_ application.
 
-### _Scenario 3_: (3 clusters): TBD
+### _Scenario 4_: (3 clusters): TBD
 
+
+## Original Proposed Scenarios
 
 ### _Scenario 1_ (2 clusters): Using a service available in a remote cluster
 
