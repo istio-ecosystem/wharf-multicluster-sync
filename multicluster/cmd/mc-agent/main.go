@@ -111,7 +111,7 @@ func main() {
 	go ctl.Run(stopCh)
 
 	log.Debugf("Starting agent listener on port %d..", port)
-	server, err := agent.NewServer("", uint16(port), store)
+	server, err := agent.NewServer("localhost", uint16(port), store)
 	go server.Run()
 
 	log.Debugf("Starting agent clients. Number of peers: %d", len(peers))
