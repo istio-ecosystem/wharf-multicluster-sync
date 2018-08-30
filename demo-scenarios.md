@@ -1,6 +1,6 @@
 # MultiCluster Demos
 
-## Basic scenarios with the Bookinfo sample application (3 clusters)
+## Basic scenarios with the _Bookinfo_ sample application (3 clusters)
 
 ## Background
 
