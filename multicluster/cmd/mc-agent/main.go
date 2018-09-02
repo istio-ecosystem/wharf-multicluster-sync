@@ -65,7 +65,7 @@ func main() {
 
 	// Set up a store wrapper for the Multi-Cluster controller
 	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy, mcmodel.RemoteServiceBinding}
-	cl, err := mccrd.NewClient(kubeconfig, context, desc, "")
+	cl, err := mccrd.NewClient(kubeconfig, context, desc, namespace)
 	if err != nil {
 		log.Errora(err)
 		return
@@ -87,7 +87,6 @@ func main() {
 		case model.EventAdd:
 			log.Debugf("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
 
-			log.Debug("Generate and add reconciled Istio configs..")
 			added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
 			if err != nil {
 				log.Errora(err)
@@ -97,7 +96,6 @@ func main() {
 		case model.EventDelete:
 			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
 
-			log.Debug("Delete the relevant Istio configs..")
 			deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
 			if err != nil {
 				log.Errora(err)
@@ -107,7 +105,6 @@ func main() {
 		case model.EventUpdate:
 			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
 
-			log.Debug("Update the relevant Istio configs..")
 			updated, err := reconcile.ModifyMulticlusterConfig(istioStore, config, clusterConfig)
 			if err != nil {
 				log.Errora(err)
@@ -158,7 +155,7 @@ func main() {
 }
 
 func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
-	configClient, err := crd.NewClient(kubeconfig, context, model.IstioConfigTypes, "")
+	configClient, err := crd.NewClient(kubeconfig, context, model.IstioConfigTypes, namespace)
 	if err != nil {
 		return nil, err
 	}
