@@ -10,12 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"istio.io/istio/pilot/pkg/config/kube/crd"
+
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
+	mccrd "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
 
-	"istio.io/istio/pilot/pkg/config/memory"
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
 	"istio.io/istio/pkg/log"
@@ -35,7 +36,7 @@ var (
 	context    string
 	configJSON string
 
-	store         mcmodel.MCConfigStore
+	mcStore       mcmodel.MCConfigStore
 	istioStore    model.ConfigStore
 	clusterConfig agent.ClusterConfig
 )
@@ -55,15 +56,16 @@ func main() {
 		return
 	}
 
-	// Setting up an in-memory config store for MultiCluster config types
-	store = mcmodel.MakeMCStore(memory.Make(mcmodel.MultiClusterConfigTypes))
+	// Set up a Kubernetes API ConfigStore for Istio configs
+	istioStore, err := makeKubeConfigIstioController()
+	if err != nil {
+		log.Errora(err)
+		return
+	}
 
-	// Setting up an in-memory config store for Istio config types
-	istioStore = model.MakeIstioStore(memory.Make(model.IstioConfigTypes))
-
-	// Set up a Kubernetes API client for the Multi-Cluster configs
+	// Set up a store wrapper for the Multi-Cluster controller
 	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy, mcmodel.RemoteServiceBinding}
-	cl, err := crd.NewClient(kubeconfig, context, desc, "")
+	cl, err := mccrd.NewClient(kubeconfig, context, desc, "")
 	if err != nil {
 		log.Errora(err)
 		return
@@ -77,15 +79,13 @@ func main() {
 	}
 
 	// Setting up a controller for the configured namespace to periodically watch for changes
-	ctl := crd.NewController(cl, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
+	ctl := mccrd.NewController(cl, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
 
 	// Register model configs event handler that will update the config store accordingly
 	ctl.RegisterEventHandler(mcmodel.ServiceExpositionPolicy.Type, func(config model.Config, ev model.Event) {
 		switch ev {
 		case model.EventAdd:
 			log.Debugf("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
-			log.Debug("Adding it to the config store..")
-			store.Create(config)
 
 			log.Debug("Generate and add reconciled Istio configs..")
 			added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
@@ -96,8 +96,6 @@ func main() {
 			agent.StoreIstioConfigs(istioStore, added, modified, nil)
 		case model.EventDelete:
 			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
-			log.Debug("Deleting it from the config store..")
-			store.Delete(config.Type, config.Name, config.Namespace)
 
 			log.Debug("Delete the relevant Istio configs..")
 			deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
@@ -108,8 +106,6 @@ func main() {
 			agent.StoreIstioConfigs(istioStore, nil, nil, deleted)
 		case model.EventUpdate:
 			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
-			log.Debug("Updating it in the config store..")
-			store.Update(config)
 
 			log.Debug("Update the relevant Istio configs..")
 			updated, err := reconcile.ModifyMulticlusterConfig(istioStore, config, clusterConfig)
@@ -119,25 +115,31 @@ func main() {
 			}
 			agent.StoreIstioConfigs(istioStore, nil, updated, nil)
 		}
-		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(store.ServiceExpositionPolicies()))
+		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(mcStore.ServiceExpositionPolicies()))
 	})
+
+	// Set up a store wrapper for the Multi-Cluster controller
+	mcStore = mcmodel.MakeMCStore(ctl)
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
 	stopCh := make(chan struct{})
 
-	log.Debug("Starting controller..")
+	log.Debug("Starting Istio controller..")
+	go istioStore.Run(stopCh)
+
+	log.Debug("Starting Multi-Cluster controller..")
 	go ctl.Run(stopCh)
 
 	log.Debugf("Starting agent listener on port %d..", clusterConfig.AgentPort)
-	server, err := agent.NewServer(clusterConfig.AgentIP, clusterConfig.AgentPort, store)
+	server, err := agent.NewServer(clusterConfig.AgentIP, clusterConfig.AgentPort, mcStore)
 	go server.Run()
 
 	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))
 	clients := []*agent.Client{}
 	for _, peer := range clusterConfig.Peers {
-		client, err := agent.NewClient(clusterConfig, &peer, cl, &store)
+		client, err := agent.NewClient(clusterConfig, &peer, cl, &mcStore)
 		if err != nil {
 			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
 			continue
@@ -153,6 +155,21 @@ func main() {
 	server.Close()
 
 	_ = log.Sync()
+}
+
+func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
+	configClient, err := crd.NewClient(kubeconfig, context, model.IstioConfigTypes, "")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = configClient.RegisterResources(); err != nil {
+		return nil, err
+	}
+
+	ctl := crd.NewController(configClient, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
+
+	return ctl, nil
 }
 
 // loadConfig will load the cluster configuration from the provided JSON file

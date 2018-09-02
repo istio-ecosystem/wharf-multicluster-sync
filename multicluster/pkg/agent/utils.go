@@ -33,7 +33,7 @@ func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []
 		for _, cfg := range update {
 			_, err := store.Update(cfg)
 			if err != nil {
-				log.Warnf("\tType:%s\tName: %s.%s [Error]", cfg.Type, cfg.Name, cfg.Namespace)
+				log.Warnf("\tType:%s\tName: %s.%s [Error: %v]", cfg.Type, cfg.Name, cfg.Namespace, err)
 				continue
 			}
 			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
@@ -44,7 +44,7 @@ func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []
 		for _, cfg := range create {
 			_, err := store.Create(cfg)
 			if err != nil {
-				log.Warnf("\tType:%s\tName: %s.%s [Error]", cfg.Type, cfg.Name, cfg.Namespace)
+				log.Warnf("\tType:%s\tName: %s.%s [Error: %v]", cfg.Type, cfg.Name, cfg.Namespace, err)
 				continue
 			}
 			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
@@ -55,7 +55,7 @@ func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []
 		for _, cfg := range delete {
 			err := store.Delete(cfg.Type, cfg.Name, cfg.Namespace)
 			if err != nil {
-				log.Warnf("\tType:%s\tName: %s.%s [Error]", cfg.Type, cfg.Name, cfg.Namespace)
+				log.Warnf("\tType:%s\tName: %s.%s [Error: %v]", cfg.Type, cfg.Name, cfg.Namespace, err)
 				continue
 			}
 			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)

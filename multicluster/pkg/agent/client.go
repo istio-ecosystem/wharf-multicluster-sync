@@ -196,7 +196,7 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *model.Confi
 	return &model.Config{
 		ConfigMeta: model.ConfigMeta{
 			Type:      mcmodel.RemoteServiceBinding.Type,
-			Group:     mcmodel.RemoteServiceBinding.Group,
+			Group:     mcmodel.RemoteServiceBinding.Group + model.IstioAPIGroupDomain,
 			Version:   mcmodel.RemoteServiceBinding.Version,
 			Name:      name,
 			Namespace: ns,
