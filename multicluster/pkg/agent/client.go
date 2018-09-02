@@ -12,8 +12,8 @@ import (
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
-	istiomodel "istio.io/istio/pilot/pkg/model"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 )
 
@@ -30,14 +30,14 @@ type Client struct {
 	crdClient    *crd.Client
 	pollInterval time.Duration
 
-	store      model.MCConfigStore
-	istioStore istiomodel.ConfigStore
+	store      mcmodel.MCConfigStore
+	istioStore model.ConfigStore
 }
 
 // NewClient will create a new agent client that connects to a peered server on
 // the specified address:port and fetch current exposition policies. The client
 // will start polling only when the Run() function is called.
-func NewClient(config *ClusterConfig, peer *ClusterConfig, client *crd.Client, store *model.MCConfigStore) (*Client, error) {
+func NewClient(config *ClusterConfig, peer *ClusterConfig, client *crd.Client, store *mcmodel.MCConfigStore) (*Client, error) {
 	c := &Client{
 		config:       config,
 		peer:         peer,
@@ -118,7 +118,7 @@ func (c *Client) update() {
 	c.createRemoteServiceBinding(binding)
 }
 
-func (c *Client) createRemoteServiceBinding(binding *istiomodel.Config) {
+func (c *Client) createRemoteServiceBinding(binding *model.Config) {
 	// First use the API server to create the new binding
 	_, err := c.crdClient.Create(*binding)
 	if err != nil {
@@ -181,7 +181,7 @@ func (c *Client) needsUpdate(exposed *ExposedServices) bool {
 	return true
 }
 
-func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.Config {
+func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *model.Config {
 	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
 	ns := ""
 	for i, service := range exposed.Services {
@@ -193,11 +193,11 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.
 		ns = service.Namespace
 	}
 	name := strings.ToLower(c.peer.ID) + "-services"
-	return &istiomodel.Config{
-		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      model.RemoteServiceBinding.Type,
-			Group:     model.RemoteServiceBinding.Group,
-			Version:   model.RemoteServiceBinding.Version,
+	return &model.Config{
+		ConfigMeta: model.ConfigMeta{
+			Type:      mcmodel.RemoteServiceBinding.Type,
+			Group:     mcmodel.RemoteServiceBinding.Group,
+			Version:   mcmodel.RemoteServiceBinding.Version,
 			Name:      name,
 			Namespace: ns,
 		},
@@ -215,7 +215,7 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *istiomodel.
 // Go through the RemoteServiceBindings in the store and find the one
 // relevant for the peered cluster.
 // TODO handle more than one RemoteServiceBinding for the cluster
-func (c *Client) remoteServiceBinding() *istiomodel.Config {
+func (c *Client) remoteServiceBinding() *model.Config {
 	for _, rsb := range c.store.RemoteServiceBindings() {
 		spec, _ := rsb.Spec.(*v1alpha1.RemoteServiceBinding)
 		for _, remote := range spec.Remote {

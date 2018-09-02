@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	istiomodel "istio.io/istio/pilot/pkg/model"
+	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 )
 
@@ -26,8 +26,8 @@ func RenderError(w http.ResponseWriter, statusCode int, err error) {
 	_, _ = fmt.Fprintf(w, "%v", err)
 }
 
-// PrintReconcileAddResults print to logger the results of calling the AddMulticlusterConfig
-func StoreIstioConfigs(store istiomodel.ConfigStore, create []istiomodel.Config, update []istiomodel.Config, delete []istiomodel.Config) {
+// StoreIstioConfigs updates the provided ConfigStore with the created, updated and deleted configs
+func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []model.Config, delete []model.Config) {
 	if len(update) > 0 {
 		log.Debugf("Istio configs updated: %d", len(update))
 		for _, cfg := range update {

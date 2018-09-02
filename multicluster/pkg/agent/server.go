@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	"istio.io/istio/pkg/log"
 
@@ -18,13 +18,13 @@ import (
 // requests coming from client agents on remote clusters.
 type Server struct {
 	httpServer http.Server
-	store      model.MCConfigStore
+	store      mcmodel.MCConfigStore
 }
 
 // NewServer will create a new agent server to serve peer request on the
 // specific address:port with information from the provided config store. The
 // server will start listening only when the Run() function is called.
-func NewServer(addr string, port uint16, store model.MCConfigStore) (*Server, error) {
+func NewServer(addr string, port uint16, store mcmodel.MCConfigStore) (*Server, error) {
 	router := mux.NewRouter()
 	s := &Server{
 		httpServer: http.Server{
