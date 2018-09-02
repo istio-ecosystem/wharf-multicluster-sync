@@ -8,11 +8,11 @@ package model
 
 import (
 	"fmt"
-	
+
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 
-	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/api/networking/v1alpha3"
+	istiomodel "istio.io/istio/pilot/pkg/model"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/api/core/v1"
@@ -20,20 +20,20 @@ import (
 
 const (
 	ProvenanceAnnotationKey = "multicluster.istio.io/provenance"
-	
-	IstioSystemNamespace = istiomodel.IstioSystemNamespace	// TODO handle non-default installs
+
+	IstioSystemNamespace = istiomodel.IstioSystemNamespace // TODO handle non-default installs
 )
 
 type ClusterInfo interface {
-    Ip(name string) string
-    Port(name string) uint32
+	Ip(name string) string
+	Port(name string) uint32
 }
 
 func remoteServiceNamespace(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
 	if rs.Namespace != "" {
 		return rs.Namespace
 	}
-	
+
 	return v1.NamespaceDefault
 }
 
@@ -45,28 +45,28 @@ func rsHostname(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) s
 func serviceToServiceEntry(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.ServiceEntry.Type,
-			Group:     istiomodel.ServiceEntry.Group,
-			Version:   istiomodel.ServiceEntry.Version,
-			Name:      fmt.Sprintf("service-entry-%s", config.Name),	// TODO avoid collisions?
-			Namespace: config.Namespace,
+			Type:        istiomodel.ServiceEntry.Type,
+			Group:       istiomodel.ServiceEntry.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.ServiceEntry.Version,
+			Name:        fmt.Sprintf("service-entry-%s", config.Name), // TODO avoid collisions?
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.ServiceEntry{
-			Hosts: []string { rsHostname(rs) },
+			Hosts: []string{rsHostname(rs)},
 			Ports: []*v1alpha3.Port{
 				&v1alpha3.Port{
-					Number: 80,
+					Number:   80,
 					Protocol: "HTTP",
-					Name: "http",
+					Name:     "http",
 				},
 			},
-			Location: v1alpha3.ServiceEntry_MESH_EXTERNAL,
+			Location:   v1alpha3.ServiceEntry_MESH_EXTERNAL,
 			Resolution: v1alpha3.ServiceEntry_DNS,
 			Endpoints: []*v1alpha3.ServiceEntry_Endpoint{
-				&v1alpha3.ServiceEntry_Endpoint {
+				&v1alpha3.ServiceEntry_Endpoint{
 					Address: fmt.Sprintf("istio-egressgateway.%s.svc.cluster.local", IstioSystemNamespace),
-					Ports: map[string]uint32 { "http": 80 },
+					Ports:   map[string]uint32{"http": 80},
 				},
 			},
 		},
@@ -77,22 +77,22 @@ func serviceToServiceEntry(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Remot
 func serviceToDestinationRule(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.DestinationRule.Type,
-			Group:     istiomodel.DestinationRule.Group,
-			Version:   istiomodel.DestinationRule.Version,
-			Name:      fmt.Sprintf("dest-rule-%s-%s", config.Name, rs.Namespace),	// TODO avoid collisions?
-			Namespace: config.Namespace,
+			Type:        istiomodel.DestinationRule.Type,
+			Group:       istiomodel.DestinationRule.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.DestinationRule.Version,
+			Name:        fmt.Sprintf("dest-rule-%s-%s", config.Name, rs.Namespace), // TODO avoid collisions?
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.DestinationRule{
 			Host: rsHostname(rs),
 			TrafficPolicy: &v1alpha3.TrafficPolicy{
 				Tls: &v1alpha3.TLSSettings{
-					Mode: v1alpha3.TLSSettings_MUTUAL,
+					Mode:              v1alpha3.TLSSettings_MUTUAL,
 					ClientCertificate: "/etc/certs/cert-chain.pem",
-					PrivateKey: "/etc/certs/key.pem",
-					CaCertificates: "/etc/certs/root-cert.pem",
-					Sni: rsHostname(rs),
+					PrivateKey:        "/etc/certs/key.pem",
+					CaCertificates:    "/etc/certs/root-cert.pem",
+					Sni:               rsHostname(rs),
 				},
 			},
 		},
@@ -103,7 +103,7 @@ func remoteServiceName(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteSer
 	if rs.Alias != "" {
 		return rs.Alias
 	}
-	
+
 	return rs.Name
 }
 
@@ -115,28 +115,28 @@ func bindingGatewayName(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteSe
 func serviceToGateway(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.Gateway.Type,
-			Group:     istiomodel.Gateway.Group,
-			Version:   istiomodel.Gateway.Version,
-			Name:      bindingGatewayName(rs),	// TODO avoid collisions?
-			Namespace: config.Namespace,
+			Type:        istiomodel.Gateway.Type,
+			Group:       istiomodel.Gateway.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.Gateway.Version,
+			Name:        bindingGatewayName(rs), // TODO avoid collisions?
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.Gateway{
 			Servers: []*v1alpha3.Server{
 				&v1alpha3.Server{
 					Port: &v1alpha3.Port{
-						Number: 80,
+						Number:   80,
 						Protocol: "TLS",
-						Name: fmt.Sprintf("%s-%s-%d", remoteServiceName(rs), rs.Namespace, 80),
+						Name:     fmt.Sprintf("%s-%s-%d", remoteServiceName(rs), rs.Namespace, 80),
 					},
-					Hosts: []string { rsHostname(rs) },
+					Hosts: []string{rsHostname(rs)},
 					Tls: &v1alpha3.Server_TLSOptions{
 						Mode: v1alpha3.Server_TLSOptions_PASSTHROUGH,
 					},
 				},
 			},
-			Selector: map[string]string {"istio": "egressgateway"},
+			Selector: map[string]string{"istio": "egressgateway"},
 		},
 	}
 }
@@ -145,22 +145,22 @@ func serviceToGateway(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServ
 func serviceToVirtualService(cluster string, rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.VirtualService.Type,
-			Group:     istiomodel.VirtualService.Group,
-			Version:   istiomodel.VirtualService.Version,
-			Name:      fmt.Sprintf("egressgateway-to-ingressgateway-%s-%s", rs.Name, rs.Namespace),	// TODO avoid collisions?
-			Namespace: config.Namespace,
+			Type:        istiomodel.VirtualService.Type,
+			Group:       istiomodel.VirtualService.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.VirtualService.Version,
+			Name:        fmt.Sprintf("egressgateway-to-ingressgateway-%s-%s", rs.Name, rs.Namespace), // TODO avoid collisions?
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.VirtualService{
-			Hosts: []string { rsHostname(rs) },
-			Gateways: []string { bindingGatewayName(rs) },
+			Hosts:    []string{rsHostname(rs)},
+			Gateways: []string{bindingGatewayName(rs)},
 			Tls: []*v1alpha3.TLSRoute{
 				&v1alpha3.TLSRoute{
 					Match: []*v1alpha3.TLSMatchAttributes{
 						&v1alpha3.TLSMatchAttributes{
-							SniHosts: []string { rsHostname(rs) },
-							Port: 80,
+							SniHosts: []string{rsHostname(rs)},
+							Port:     80,
 						},
 					},
 					Route: []*v1alpha3.DestinationWeight{
@@ -185,29 +185,29 @@ func serviceToVirtualService(cluster string, rs *v1alpha1.RemoteServiceBinding_R
 func clusterToServiceEntry(cluster string, ip string, port uint32, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.ServiceEntry.Type,
-			Group:     istiomodel.ServiceEntry.Group,
-			Version:   istiomodel.ServiceEntry.Version,
-			Name:      fmt.Sprintf("service-entry-ingress-gateway-%s", cluster),
-			Namespace: config.Namespace,
+			Type:        istiomodel.ServiceEntry.Type,
+			Group:       istiomodel.ServiceEntry.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.ServiceEntry.Version,
+			Name:        fmt.Sprintf("service-entry-ingress-gateway-%s", cluster),
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.ServiceEntry{
-			Hosts: []string { cluster },
-			Addresses: []string { "127.8.8.8" }, // dummy
+			Hosts:     []string{cluster},
+			Addresses: []string{"127.8.8.8"}, // dummy
 			Ports: []*v1alpha3.Port{
 				&v1alpha3.Port{
-					Number: 80,
+					Number:   80,
 					Protocol: "TCP",
-					Name: "tcp",
+					Name:     "tcp",
 				},
 			},
-			Location: v1alpha3.ServiceEntry_MESH_EXTERNAL,
+			Location:   v1alpha3.ServiceEntry_MESH_EXTERNAL,
 			Resolution: v1alpha3.ServiceEntry_DNS,
 			Endpoints: []*v1alpha3.ServiceEntry_Endpoint{
-				&v1alpha3.ServiceEntry_Endpoint {
+				&v1alpha3.ServiceEntry_Endpoint{
 					Address: ip,
-					Ports: map[string]uint32 { "tcp": port },
+					Ports:   map[string]uint32{"tcp": port},
 				},
 			},
 		},
@@ -226,18 +226,18 @@ func convertRSB(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci
 		}
 		out = append(out, *clusterToServiceEntry(remote.Cluster, ci.Ip(remote.Cluster), ci.Port(remote.Cluster), config))
 	}
-	
+
 	return out, nil
 }
 
 func expositionToDestinationRule(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.DestinationRule.Type,
-			Group:     istiomodel.DestinationRule.Group,
-			Version:   istiomodel.DestinationRule.Version,
-			Name:      fmt.Sprintf("dest-rule-%s-default-notls", es.Name),	// TODO avoid collisions?
-			Namespace: config.Namespace,
+			Type:        istiomodel.DestinationRule.Type,
+			Group:       istiomodel.DestinationRule.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.DestinationRule.Version,
+			Name:        fmt.Sprintf("dest-rule-%s-default-notls", es.Name), // TODO avoid collisions?
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.DestinationRule{
@@ -260,47 +260,47 @@ func exposedServiceName(es *v1alpha1.ServiceExpositionPolicy_ExposedService) str
 	if es.Alias != "" {
 		return es.Alias
 	}
-	
+
 	return es.Name
 }
 
 func exposedServiceGatewayName(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) string {
-	return fmt.Sprintf("istio-ingressgateway-%s-%s", es.Name, getNamespace(config))	// TODO avoid collisions?
+	return fmt.Sprintf("istio-ingressgateway-%s-%s", es.Name, getNamespace(config)) // TODO avoid collisions?
 }
 
 func getNamespace(config istiomodel.Config) string {
 	if config.Namespace != "" {
 		return config.Namespace
 	}
-	
+
 	return v1.NamespaceDefault
 }
 
 func expositionToGateway(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.Gateway.Type,
-			Group:     istiomodel.Gateway.Group,
-			Version:   istiomodel.Gateway.Version,
-			Name:      exposedServiceGatewayName(es, config),
-			Namespace: config.Namespace,
+			Type:        istiomodel.Gateway.Type,
+			Group:       istiomodel.Gateway.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.Gateway.Version,
+			Name:        exposedServiceGatewayName(es, config),
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.Gateway{
 			Servers: []*v1alpha3.Server{
 				&v1alpha3.Server{
 					Port: &v1alpha3.Port{
-						Number: 80,
+						Number:   80,
 						Protocol: "TLS",
-						Name: fmt.Sprintf("%s-%s-%d", es.Name, getNamespace(config), 80),
+						Name:     fmt.Sprintf("%s-%s-%d", es.Name, getNamespace(config), 80),
 					},
-					Hosts: []string { fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), getNamespace(config)) },
+					Hosts: []string{fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), getNamespace(config))},
 					Tls: &v1alpha3.Server_TLSOptions{
 						Mode: v1alpha3.Server_TLSOptions_PASSTHROUGH,
 					},
 				},
 			},
-			Selector: map[string]string {"istio": "ingressgateway"},
+			Selector: map[string]string{"istio": "ingressgateway"},
 		},
 	}, nil
 }
@@ -313,28 +313,28 @@ func esHostname(config istiomodel.Config, es *v1alpha1.ServiceExpositionPolicy_E
 func expositionToVirtualService(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:      istiomodel.VirtualService.Type,
-			Group:     istiomodel.VirtualService.Group,
-			Version:   istiomodel.VirtualService.Version,
-			Name:      fmt.Sprintf("ingressgateway-to-%s-%s", es.Name, getNamespace(config)),
-			Namespace: config.Namespace,
+			Type:        istiomodel.VirtualService.Type,
+			Group:       istiomodel.VirtualService.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.VirtualService.Version,
+			Name:        fmt.Sprintf("ingressgateway-to-%s-%s", es.Name, getNamespace(config)),
+			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.VirtualService{
-			Hosts: []string { esHostname(config, es) },
-			Gateways: []string { exposedServiceGatewayName(es, config) },
+			Hosts:    []string{esHostname(config, es)},
+			Gateways: []string{exposedServiceGatewayName(es, config)},
 			Tls: []*v1alpha3.TLSRoute{
 				&v1alpha3.TLSRoute{
 					Match: []*v1alpha3.TLSMatchAttributes{
 						&v1alpha3.TLSMatchAttributes{
-							SniHosts: []string { esHostname(config, es) },
-							Port: 80,
+							SniHosts: []string{esHostname(config, es)},
+							Port:     80,
 						},
 					},
 					Route: []*v1alpha3.DestinationWeight{
 						&v1alpha3.DestinationWeight{
 							Destination: &v1alpha3.Destination{
-								Host: fmt.Sprintf("%s.%s.svc.cluster.local", es.Name, getNamespace(config)),
+								Host:   fmt.Sprintf("%s.%s.svc.cluster.local", es.Name, getNamespace(config)),
 								Subset: "notls",
 								Port: &v1alpha3.PortSelector{
 									Port: &v1alpha3.PortSelector_Number{
@@ -363,12 +363,12 @@ func convertSEP(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy)
 		if err != nil {
 			return out, err
 		}
-		
+
 		gw, err := expositionToGateway(remote, config)
 		if err != nil {
 			return out, err
 		}
-		
+
 		vs, err := expositionToVirtualService(remote, config)
 		if err != nil {
 			return out, err
@@ -376,13 +376,13 @@ func convertSEP(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy)
 
 		out = append(out, *dr, *gw, *vs)
 	}
-	
+
 	return out, nil
 }
 
 func ConvertBindingsAndExposures(mcs []istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
-	
+
 	for _, mc := range mcs {
 		var istio []istiomodel.Config
 		var err error
@@ -399,7 +399,7 @@ func ConvertBindingsAndExposures(mcs []istiomodel.Config, ci ClusterInfo) ([]ist
 		}
 		out = append(out, istio...)
 	}
-	
+
 	return out, nil
 }
 
@@ -415,7 +415,7 @@ func namespace(config istiomodel.Config) string {
 }
 
 func annotations(config istiomodel.Config) map[string]string {
-	return map[string]string {
+	return map[string]string{
 		ProvenanceAnnotationKey: provenanceAnnotation(config),
 	}
 }
