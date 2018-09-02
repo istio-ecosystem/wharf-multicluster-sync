@@ -36,6 +36,7 @@ var (
 	configJSON string
 
 	store         mcmodel.MCConfigStore
+	istioStore    model.ConfigStore
 	clusterConfig agent.ClusterConfig
 )
 
@@ -54,8 +55,11 @@ func main() {
 		return
 	}
 
-	// Setting up an in-memory config store for the agent
+	// Setting up an in-memory config store for MultiCluster config types
 	store = mcmodel.MakeMCStore(memory.Make(mcmodel.MultiClusterConfigTypes))
+
+	// Setting up an in-memory config store for Istio config types
+	istioStore = model.MakeIstioStore(memory.Make(model.IstioConfigTypes))
 
 	// Set up a Kubernetes API client for the Multi-Cluster configs
 	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy, mcmodel.RemoteServiceBinding}
@@ -82,20 +86,38 @@ func main() {
 			log.Debugf("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Adding it to the config store..")
 			store.Create(config)
-			log.Debug("Reconciling..")
-			added, modified, err := reconcile.AddMulticlusterConfig(store, config, clusterConfig)
-			agent.PrintReconcileAddResults(added, modified, err)
+
+			log.Debug("Generate and add reconciled Istio configs..")
+			added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
+			if err != nil {
+				log.Errora(err)
+				return
+			}
+			agent.StoreIstioConfigs(istioStore, added, modified, nil)
 		case model.EventDelete:
 			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Deleting it from the config store..")
 			store.Delete(config.Type, config.Name, config.Namespace)
-			log.Debug("Reconciling..")
-			deleted, err := reconcile.DeleteMulticlusterConfig(store, config, clusterConfig)
-			agent.PrintReconcileDeleteResults(deleted, err)
+
+			log.Debug("Delete the relevant Istio configs..")
+			deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
+			if err != nil {
+				log.Errora(err)
+				return
+			}
+			agent.StoreIstioConfigs(istioStore, nil, nil, deleted)
 		case model.EventUpdate:
 			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
 			log.Debug("Updating it in the config store..")
 			store.Update(config)
+
+			log.Debug("Update the relevant Istio configs..")
+			updated, err := reconcile.ModifyMulticlusterConfig(istioStore, config, clusterConfig)
+			if err != nil {
+				log.Errora(err)
+				return
+			}
+			agent.StoreIstioConfigs(istioStore, nil, updated, nil)
 		}
 		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(store.ServiceExpositionPolicies()))
 	})

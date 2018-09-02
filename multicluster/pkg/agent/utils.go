@@ -27,29 +27,38 @@ func RenderError(w http.ResponseWriter, statusCode int, err error) {
 }
 
 // PrintReconcileAddResults print to logger the results of calling the AddMulticlusterConfig
-func PrintReconcileAddResults(added []istiomodel.Config, modified []istiomodel.Config, err error) {
-	if err != nil {
-		log.Errora(err)
-		return
+func StoreIstioConfigs(store istiomodel.ConfigStore, create []istiomodel.Config, update []istiomodel.Config, delete []istiomodel.Config) {
+	if len(update) > 0 {
+		log.Debugf("Istio configs updated: %d", len(update))
+		for _, cfg := range update {
+			_, err := store.Update(cfg)
+			if err != nil {
+				log.Warnf("\tType:%s\tName: %s.%s [Error]", cfg.Type, cfg.Name, cfg.Namespace)
+				continue
+			}
+			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
+		}
 	}
-	log.Debugf("Istio configs added: %d", len(added))
-	for _, cfg := range added {
-		log.Debugf("\tType:%s\tName: %s", cfg.Type, cfg.Name)
+	if len(create) > 0 {
+		log.Debugf("Istio configs created: %d", len(create))
+		for _, cfg := range create {
+			_, err := store.Create(cfg)
+			if err != nil {
+				log.Warnf("\tType:%s\tName: %s.%s [Error]", cfg.Type, cfg.Name, cfg.Namespace)
+				continue
+			}
+			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
+		}
 	}
-	log.Debugf("Istio configs modified: %d", len(modified))
-	for _, cfg := range modified {
-		log.Debugf("\tType:%s\tName: %s", cfg.Type, cfg.Name)
-	}
-}
-
-// PrintReconcileDeleteResults print to logger the results of calling the DeleteMulticlusterConfig
-func PrintReconcileDeleteResults(deleted []istiomodel.Config, err error) {
-	if err != nil {
-		log.Errora(err)
-		return
-	}
-	log.Debugf("Istio configs deleted: %d", len(deleted))
-	for _, cfg := range deleted {
-		log.Debugf("\tType:%s\tName: %s", cfg.Type, cfg.Name)
+	if len(delete) > 0 {
+		log.Debugf("Istio configs deleted: %d", len(delete))
+		for _, cfg := range delete {
+			err := store.Delete(cfg.Type, cfg.Name, cfg.Namespace)
+			if err != nil {
+				log.Warnf("\tType:%s\tName: %s.%s [Error]", cfg.Type, cfg.Name, cfg.Namespace)
+				continue
+			}
+			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
+		}
 	}
 }

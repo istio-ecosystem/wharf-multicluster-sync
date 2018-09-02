@@ -30,7 +30,8 @@ type Client struct {
 	crdClient    *crd.Client
 	pollInterval time.Duration
 
-	store model.MCConfigStore
+	store      model.MCConfigStore
+	istioStore istiomodel.ConfigStore
 }
 
 // NewClient will create a new agent client that connects to a peered server on
@@ -98,7 +99,11 @@ func (c *Client) update() {
 
 			// Use the reconcile to generate the inferred Istio configs for the new binding
 			deleted, err := reconcile.DeleteMulticlusterConfig(c.store, *rsb, c.config)
-			PrintReconcileDeleteResults(deleted, err)
+			if err != nil {
+				log.Errora(err)
+				return
+			}
+			StoreIstioConfigs(c.istioStore, nil, nil, deleted)
 		}
 		return
 	}
@@ -127,9 +132,15 @@ func (c *Client) createRemoteServiceBinding(binding *istiomodel.Config) {
 
 	// Use the reconcile to generate the inferred Istio configs for the new binding
 	added, modified, err := reconcile.AddMulticlusterConfig(c.store, *binding, c.config)
-	PrintReconcileAddResults(added, modified, err)
+	if err != nil {
+		log.Errora(err)
+		return
+	}
+	StoreIstioConfigs(c.istioStore, added, modified, nil)
 }
 
+// Function will call the peer of this client and fetch the current state of
+// exposed services.
 func (c *Client) callPeer() (*ExposedServices, error) {
 	url := fmt.Sprintf("http://%s:%d/exposed/%s", c.peer.AgentIP, c.peer.AgentPort, c.config.ID)
 	resp, err := http.Get(url)
@@ -150,14 +161,20 @@ func (c *Client) callPeer() (*ExposedServices, error) {
 	return exposed, nil
 }
 
+// Go through the provided list of exposed services and determine whether there
+// are any updates/changes from the current list. Organize the changes and
+// return those.
 func (c *Client) needsUpdate(exposed *ExposedServices) bool {
 	current := c.store.RemoteServiceBindings()
 	for _, rsb := range current {
 		spec, _ := rsb.Spec.(*v1alpha1.RemoteServiceBinding)
 		for _, remote := range spec.Remote {
 			if remote.Cluster == c.peer.ID { // found it
-				// TODO check for services updates
-				return len(remote.Services) != len(exposed.Services)
+				if len(remote.Services) != len(exposed.Services) {
+					return true
+				}
+				// TODO go through both lists and see if there are any differences
+				return false
 			}
 		}
 	}
