@@ -37,13 +37,14 @@ type Client struct {
 // NewClient will create a new agent client that connects to a peered server on
 // the specified address:port and fetch current exposition policies. The client
 // will start polling only when the Run() function is called.
-func NewClient(config *ClusterConfig, peer *ClusterConfig, client *crd.Client, store *mcmodel.MCConfigStore) (*Client, error) {
+func NewClient(config *ClusterConfig, peer *ClusterConfig, client *crd.Client, store *mcmodel.MCConfigStore, istioStore model.ConfigStore) (*Client, error) {
 	c := &Client{
 		config:       config,
 		peer:         peer,
 		crdClient:    client,
 		pollInterval: pollInterval,
 		store:        *store,
+		istioStore:   istioStore,
 	}
 	return c, nil
 }
@@ -98,7 +99,7 @@ func (c *Client) update() {
 			log.Debugf("RemoteServiceVinfing deleted for cluser [%s] deleted", c.peer.ID)
 
 			// Use the reconcile to generate the inferred Istio configs for the new binding
-			deleted, err := reconcile.DeleteMulticlusterConfig(c.store, *rsb, c.config)
+			deleted, err := reconcile.DeleteMulticlusterConfig(c.istioStore, *rsb, c.config)
 			if err != nil {
 				log.Errora(err)
 				return
@@ -131,7 +132,7 @@ func (c *Client) createRemoteServiceBinding(binding *model.Config) {
 	c.store.Create(*binding)
 
 	// Use the reconcile to generate the inferred Istio configs for the new binding
-	added, modified, err := reconcile.AddMulticlusterConfig(c.store, *binding, c.config)
+	added, modified, err := reconcile.AddMulticlusterConfig(c.istioStore, *binding, c.config)
 	if err != nil {
 		log.Errora(err)
 		return

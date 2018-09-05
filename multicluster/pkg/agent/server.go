@@ -83,6 +83,7 @@ func (s *Server) handlePoliciesReq(w http.ResponseWriter, req *http.Request) {
 
 // Function checkes whether the provided cluster identity is trusted or not.
 func (s *Server) isTrustedCluster(clusterID string) bool {
+	// TODO read it from auth config
 	return clusterID == "clusterA"
 }
 

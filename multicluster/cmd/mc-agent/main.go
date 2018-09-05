@@ -136,7 +136,7 @@ func main() {
 	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))
 	clients := []*agent.Client{}
 	for _, peer := range clusterConfig.Peers {
-		client, err := agent.NewClient(clusterConfig, &peer, cl, &mcStore)
+		client, err := agent.NewClient(clusterConfig, &peer, cl, &mcStore, istioStore)
 		if err != nil {
 			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
 			continue
