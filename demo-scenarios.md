@@ -8,9 +8,11 @@ Three peer organizations, _org1_, _org2_, and _org3_ control their own individua
 
 ### The inception of the _Bookinfo_ application
 
-In _org1_, a developer team is responsible for creating the _Bookinfo_ application. They start by creating 2 microservices, namely, _productpage_ and _details_. They learn about a microservice made available by a team from _org2_ and decide to use it. Thus, the first version of _bookinfo_ is finished, which uses the version 1 of the _reviews_ service (_reviews-v1_) made available by _org2_.
+In _org1_, a developer team is responsible for creating the _Bookinfo_ application. They start by creating 2 microservices, namely, _productpage_ and _details_. They learn about a microservice made available by a team from _org2_ and decide to use it, instead of reinventing the wheel. Thus, the first version of _bookinfo_ is finished, which uses the version 1 of the _reviews_ service (_reviews-v1_) made available by _org2_.
 
 **Demo steps:**
+
+The steps below demonstrate the user-triggered binding to a service exposed in a remote cluster.
 
 1. Start with services _productpage_ and _details_ running on _cluster1_.
 2. Start with service _reviews-v1_ running on _cluster2_.
@@ -24,6 +26,8 @@ In _org1_, a developer team is responsible for creating the _Bookinfo_ applicati
 In _org2_, the dev team of _reviews_ learns about the _ratings_ service made available by _org3_. So, they decide to build a new version of their service (_reviews-v2_) which takes advantage of the _ratings_ service provided by _org3_. The new version of reviews is then made available by _org3_.
 
 **Demo steps:**
+
+The steps below demonstrate the automatic (as opposed to user-triggered) binding to a service exposed in a remote cluster.
 
 1. Make sure _ratings_ is running on _cluster3_.
 2. Expose _ratings_ on cluster3.
