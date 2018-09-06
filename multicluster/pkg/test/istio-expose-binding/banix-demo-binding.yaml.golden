@@ -1,0 +1,38 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
+  creationTimestamp: null
+  name: service-entry-server-rsb
+  namespace: default
+spec:
+  endpoints:
+  - address: istio-egressgateway.istio-system.svc.cluster.local
+    ports:
+      tcp: 80
+  hosts:
+  - server.ns2.svc.cluster.global
+  ports:
+  - name: http
+    number: 80
+    protocol: HTTP
+  resolution: STATIC
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.server-rsb
+  creationTimestamp: null
+  name: dest-rule-server-rsb-default
+  namespace: default
+spec:
+  host: server.ns2.svc.cluster.global
+  trafficPolicy:
+    tls:
+      caCertificates: /etc/certs/root-cert.pem
+      clientCertificate: /etc/certs/cert-chain.pem
+      mode: MUTUAL
+      privateKey: /etc/certs/key.pem
+      sni: server.ns2.svc.cluster.global

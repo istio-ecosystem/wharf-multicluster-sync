@@ -23,7 +23,7 @@ func ValidateServiceExpositionPolicy(name, namespace string, msg proto.Message) 
 		errs = appendErrors(errs, fmt.Errorf("policy must have at least one exposition"))
 	} else {
 		for _, exposed := range value.Exposed {
-		 	errs = appendErrors(errs, validateExposedService(exposed))
+			errs = appendErrors(errs, validateExposedService(exposed))
 		}
 	}
 
@@ -40,7 +40,7 @@ func validateExposedService(vs *multicluster.ServiceExpositionPolicy_ExposedServ
 	}
 
 	// TODO should we validate that at least one Cluster is present?  Or does leaving
-	// "Clusters" empty mean any cluster can talk to the service (public API)? 
+	// "Clusters" empty mean any cluster can talk to the service (public API)?
 	return errs
 }
 

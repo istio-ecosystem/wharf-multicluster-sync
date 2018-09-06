@@ -1,0 +1,59 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: ns2.server-sep
+  creationTimestamp: null
+  name: dest-rule-server-default-notls
+  namespace: default
+spec:
+  host: server.default.svc.cluster.local
+  subsets:
+  - name: notls
+    trafficPolicy:
+      tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: ns2.server-sep
+  creationTimestamp: null
+  name: istio-ingressgateway-server-ns2
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - server.ns2.svc.cluster.global
+    port:
+      name: server-ns2-80
+      number: 80
+      protocol: TLS
+    tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: ns2.server-sep
+  creationTimestamp: null
+  name: ingressgateway-to-server-ns2
+  namespace: default
+spec:
+  gateways:
+  - istio-ingressgateway-server-ns2
+  hosts:
+  - server.ns2.svc.cluster.global
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - server.ns2.svc.cluster.global
+    route:
+    - destination:
+        host: server.default.svc.cluster.local
+        port:
+          number: 80
+        subset: notls
