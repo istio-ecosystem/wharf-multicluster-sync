@@ -1,0 +1,38 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: service-entry-reviews
+  namespace: default
+spec:
+  endpoints:
+  - address: istio-egressgateway.istio-system.svc.cluster.local
+    ports:
+      http: 80
+  hosts:
+  - reviews.default.svc.cluster.global
+  ports:
+  - name: http
+    number: 80
+    protocol: HTTP
+  resolution: STATIC
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: dest-rule-reviews-default
+  namespace: default
+spec:
+  host: reviews.default.svc.cluster.global
+  trafficPolicy:
+    tls:
+      caCertificates: /etc/certs/root-cert.pem
+      clientCertificate: /etc/certs/cert-chain.pem
+      mode: MUTUAL
+      privateKey: /etc/certs/key.pem
+      sni: reviews.default.svc.cluster.global

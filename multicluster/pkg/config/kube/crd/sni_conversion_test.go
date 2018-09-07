@@ -27,6 +27,14 @@ func TestBindingToSNIConfiguration(t *testing.T) {
 			out: "banix-demo-binding.yaml"},
 		{in: "rshriram-demo-exposure.yaml",
 			out: "banix-demo-exposure.yaml"},
+		{in: "reviews-binding.yaml",
+			out: "reviews-sni-binding.yaml"},
+// TODO restore
+//		{in: "reviews-binding-v1-only.yaml",
+//			out: "reviews-sni-binding-v1-only.yaml"},
+// TODO restore
+//		{in: "reviews-exposure.yaml",
+//			out: "reviews-sni-exposure.yaml"},
 	}
 
 	for _, tc := range tt {

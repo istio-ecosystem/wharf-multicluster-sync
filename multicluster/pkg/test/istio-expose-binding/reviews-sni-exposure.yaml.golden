@@ -1,0 +1,120 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: dest-rule-reviews-default-notls
+  namespace: default
+spec:
+  host: reviews.default.svc.cluster.local
+  subsets:
+  - name: notls
+    trafficPolicy:
+      tls: {}
+  # If there was already a DestinationRule for reviews defining subset v1
+  # how can I create this new rule setting trafficPolicy to disable TLS without stomping on it?
+  # Does generation of this DestinationRule need to merge with the real DestinationRule like this?
+  host: reviews.default.svc.cluster.local
+  subsets:
+  - name: v1		# Legacy comes from existing DestinationRule, not ServiceExposurePolicy
+    labels:
+      version: v1
+  - name: notls		# From ServiceExposurePolicy
+    trafficPolicy:
+      tls: {}
+  - name: notls-v1	# Merged from ServiceExposurePolicy and a DestinationRule label subset
+    trafficPolicy:
+      tls: {}
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: istio-ingressgateway-reviews-default
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - reviews.default.svc.cluster.global
+    port:
+      name: reviews-default-80
+      number: 80
+      protocol: TLS
+    tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: ingressgateway-to-reviews-default
+  namespace: default
+spec:
+  gateways:
+  - istio-ingressgateway-reviews-default
+  hosts:
+  - reviews.default.svc.cluster.global
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - reviews.default.svc.cluster.global
+    route:
+    - destination:
+        host: reviews.default.svc.cluster.local
+        port:
+          number: 80
+        subset: notls
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews-v1
+  creationTimestamp: null
+  name: istio-ingressgateway-reviews-v1-default
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - reviews-v1.default.svc.cluster.global
+    port:
+      name: reviews-v1-default-80
+      number: 80
+      protocol: TLS
+    tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews-v1
+  creationTimestamp: null
+  name: ingressgateway-to-reviews-v1-default
+  namespace: default
+spec:
+  gateways:
+  - istio-ingressgateway-reviews-v1-default
+  hosts:
+  - reviews-v1.default.svc.cluster.global
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - reviews-v1.default.svc.cluster.global
+    route:
+    - destination:
+        host: reviews.default.svc.cluster.local
+        port:
+          number: 80
+        subset: notls-v1
