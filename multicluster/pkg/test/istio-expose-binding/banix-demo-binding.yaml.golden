@@ -10,7 +10,7 @@ spec:
   endpoints:
   - address: istio-egressgateway.istio-system.svc.cluster.local
     ports:
-      tcp: 80
+      http: 80
   hosts:
   - server.ns2.svc.cluster.global
   ports:

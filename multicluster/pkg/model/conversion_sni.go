@@ -80,7 +80,7 @@ func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Re
 			Endpoints: []*v1alpha3.ServiceEntry_Endpoint{
 				&v1alpha3.ServiceEntry_Endpoint{
 					Address: fmt.Sprintf("istio-egressgateway.%s.svc.cluster.local", IstioSystemNamespace),
-					Ports:   map[string]uint32{"tcp": 80},
+					Ports:   map[string]uint32{"http": 80},
 				},
 			},
 		},
