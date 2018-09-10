@@ -1,0 +1,12 @@
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  creationTimestamp: null
+  name: -services
+  namespace: mynamespace
+spec:
+  remote:
+  - services:
+    - alias: FooA
+      name: FooA
+      namespace: mynamespace
