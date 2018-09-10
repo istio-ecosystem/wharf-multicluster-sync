@@ -265,7 +265,7 @@ func exposedServiceName(es *v1alpha1.ServiceExpositionPolicy_ExposedService) str
 }
 
 func exposedServiceGatewayName(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) string {
-	return fmt.Sprintf("istio-ingressgateway-%s-%s", es.Name, getNamespace(config)) // TODO avoid collisions?
+	return fmt.Sprintf("istio-ingressgateway-%s-%s", exposedServiceName(es), getNamespace(config)) // TODO avoid collisions?
 }
 
 func getNamespace(config istiomodel.Config) string {

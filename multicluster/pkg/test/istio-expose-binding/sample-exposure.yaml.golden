@@ -19,7 +19,7 @@ metadata:
   annotations:
     multicluster.istio.io/provenance: mynamespace.sample1
   creationTimestamp: null
-  name: istio-ingressgateway-ServiceA-mynamespace
+  name: istio-ingressgateway-FooA-mynamespace
   namespace: mynamespace
 spec:
   selector:
@@ -43,7 +43,7 @@ metadata:
   namespace: mynamespace
 spec:
   gateways:
-  - istio-ingressgateway-ServiceA-mynamespace
+  - istio-ingressgateway-FooA-mynamespace
   hosts:
   - FooA.mynamespace.svc.cluster.global
   tls:

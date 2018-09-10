@@ -19,9 +19,24 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, error) {
+// ConvertBindingsAndExposuresSNI converts a list of multicluster SEP and RDS configuration
+// into Istio configuration.  It may consult existing Istio configuration in 'store' (e.g. DestinationRule subsets)
+func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
+	// Construct map of hostname -> DestinationRule
+	drs := make(map[string]*istiomodel.Config)
+	drConfigs, err := store.List(istiomodel.DestinationRule.Type, meta_v1.NamespaceDefault)
+	if err != nil {
+		return nil, err
+	}
+	for _, dr := range drConfigs {
+		spec := dr.Spec.(*v1alpha3.DestinationRule)
+		dr.ResourceVersion = ""		// Don't tie rule to a specific version
+		drs[spec.Host] = &dr
+	}
+
+	// Process each Multicluster Config SEP or RSB 
 	for _, mc := range mcs {
 		var istio []istiomodel.Config
 		var err error
@@ -31,7 +46,7 @@ func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo) ([]
 		}
 		sep, ok := mc.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		if ok {
-			istio, err = convertSEPSNI(mc, sep)
+			istio, err = convertSEPSNI(mc, sep, drs)
 		}
 		if err != nil {
 			return out, multierror.Prefix(err, "Could not convert")
@@ -39,7 +54,22 @@ func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo) ([]
 		out = append(out, istio...)
 	}
 
-	return out, nil
+	// Remove duplicates (e.g. DRs for the same host exposed under different aliases),
+	// favoring duplicates later in the sequence.
+	unique := make([]istiomodel.Config, 0)
+	names := make(map[string]int)	// map of type+namespace+name -> position
+	for _, config := range out {
+		key := fmt.Sprintf("%s+%s+%s", config.Type, config.Namespace, config.Name)
+		pos, ok := names[key]
+		if ok {
+			unique[pos] = config
+		} else {
+			names[key] = len(unique)
+			unique = append(unique, config)
+		}
+	}
+	
+	return unique, nil
 }
 
 func convertRSBSNI(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, error) {
@@ -113,7 +143,7 @@ func serviceToDestinationRuleSNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster
 	}
 }
 
-func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy) ([]istiomodel.Config, error) {
+func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range sep.Exposed {
@@ -122,7 +152,7 @@ func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPoli
 			svcname = remote.Name
 		}
 
-		dr, err := expositionToDestinationRuleSNI(remote, config)
+		dr, err := expositionToDestinationRuleSNI(remote, config, drs)
 		if err != nil {
 			return out, err
 		}
@@ -143,31 +173,79 @@ func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPoli
 	return out, nil
 }
 
-func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
-	return &istiomodel.Config{
-		ConfigMeta: istiomodel.ConfigMeta{
-			Type:    istiomodel.DestinationRule.Type,
-			Group:   istiomodel.DestinationRule.Group + istiomodel.IstioAPIGroupDomain,
-			Version: istiomodel.DestinationRule.Version,
-			Name:    fmt.Sprintf("dest-rule-%s-default-notls", es.Name), // TODO avoid collisions?
-			// Namespace:   config.Namespace,
-			Annotations: annotations(config),
-		},
-		Spec: &v1alpha3.DestinationRule{
-			Host: fmt.Sprintf("%s.default.svc.cluster.local", es.Name),
-			Subsets: []*v1alpha3.Subset{
-				&v1alpha3.Subset{
-					Name: "notls",
-					TrafficPolicy: &v1alpha3.TrafficPolicy{
-						Tls: &v1alpha3.TLSSettings{
-							Mode: v1alpha3.TLSSettings_DISABLE,
-						},
-					},
+// 'drs' maps hostname to DestinationRule and is used to keep track of destinations exposed with different subset and/or alias
+func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config, drs map[string]*istiomodel.Config) (*istiomodel.Config, error) {
+	hostname := fmt.Sprintf("%s.default.svc.cluster.local", es.Name)
+
+	dr, ok := drs[hostname]
+	if !ok {
+		dr = &istiomodel.Config{
+			ConfigMeta: istiomodel.ConfigMeta{
+				Type:    istiomodel.DestinationRule.Type,
+				Group:   istiomodel.DestinationRule.Group + istiomodel.IstioAPIGroupDomain,
+				Version: istiomodel.DestinationRule.Version,
+				Name:    fmt.Sprintf("dest-rule-%s-default-notls", es.Name), // TODO avoid collisions?
+				// Namespace:   config.Namespace,
+				Annotations: annotations(config),
+			},
+			Spec: &v1alpha3.DestinationRule{
+				Host: hostname,
+				Subsets: []*v1alpha3.Subset{},
+			},
+		}
+
+		drs[hostname] = dr
+	}
+
+	// Ensure dr has a subset named 'notls' or 'notls-<orig>' for the subset
+	spec := dr.Spec.(*v1alpha3.DestinationRule)
+	subset := getSubset(spec, notlsSubsetName(es)) 
+	if subset == nil {
+		var labels map[string]string
+		if es.Subset != "" {
+			origSubset := getSubset(spec, es.Subset)
+			if origSubset == nil {
+				return nil, fmt.Errorf("Exposed subset %q not defined in DestinationRule %s/%s", es.Subset, dr.Namespace, dr.Name)
+			}
+			labels = origSubset.Labels
+		} else {
+			labels = nil
+		}
+
+		spec.Subsets = append(spec.Subsets, &v1alpha3.Subset{
+			Name: notlsSubsetName(es),
+			TrafficPolicy: &v1alpha3.TrafficPolicy{
+				Tls: &v1alpha3.TLSSettings{
+					Mode: v1alpha3.TLSSettings_DISABLE,
 				},
 			},
-		},
-	}, nil
+			Labels: labels,
+		})
+	}
+
+	// Add the dr to the store so that if another ServiceExpositionPolicy refers to the same
+	// service we will modify the DestinationRule we just created.
+
+	return dr, nil
 }
+
+// notlsSubsetName returns the name of the Subset to be used for Istio configuration
+func notlsSubsetName(es *v1alpha1.ServiceExpositionPolicy_ExposedService) string {
+	if es.Subset != "" {
+		return fmt.Sprintf("notls-%s", es.Subset)
+	}
+	return "notls"
+}
+
+func getSubset(rule *v1alpha3.DestinationRule, name string) *v1alpha3.Subset {
+	for _, subset := range rule.Subsets {
+		if subset.Name == name {
+			return subset
+		}
+	}
+
+	return nil
+} 
 
 func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
@@ -205,7 +283,7 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 			Type:    istiomodel.VirtualService.Type,
 			Group:   istiomodel.VirtualService.Group + istiomodel.IstioAPIGroupDomain,
 			Version: istiomodel.VirtualService.Version,
-			Name:    fmt.Sprintf("ingressgateway-to-%s-%s", es.Name, getNamespace(config)),
+			Name:    fmt.Sprintf("ingressgateway-to-%s-%s", exposedServiceName(es), getNamespace(config)),
 			// Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
@@ -224,7 +302,7 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 						&v1alpha3.DestinationWeight{
 							Destination: &v1alpha3.Destination{
 								Host:   fmt.Sprintf("%s.%s.svc.cluster.local", es.Name, meta_v1.NamespaceDefault),
-								Subset: "notls",
+								Subset: notlsSubsetName(es),
 								Port: &v1alpha3.PortSelector{
 									Port: &v1alpha3.PortSelector_Number{
 										Number: 80,

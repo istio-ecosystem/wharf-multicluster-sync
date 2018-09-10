@@ -14,7 +14,8 @@ metadata:
   name: reviews-v1
 spec:
   exposed:
-  - name: reviews-v1
+  - name: reviews
+    alias: reviews-v1
     subset: v1
     clusters:
     - cluster1

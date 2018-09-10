@@ -8,10 +8,13 @@ package crd
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 
+	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
 	istiomodel "istio.io/istio/pilot/pkg/model"
+	"istio.io/istio/pilot/pkg/config/memory"
 
 	"istio.io/istio/pilot/test/util"
 
@@ -20,8 +23,9 @@ import (
 
 func TestBindingToSNIConfiguration(t *testing.T) {
 	tt := []struct {
-		in  string
-		out string
+		in  string		// Filename of SEP and RSBs
+		store string	// Filename for baseline Istio configuration for merging
+		out string		// Filename for generated Istio configuration
 	}{
 		{in: "rshriram-demo-binding.yaml",
 			out: "banix-demo-binding.yaml"},
@@ -32,9 +36,9 @@ func TestBindingToSNIConfiguration(t *testing.T) {
 // TODO restore
 //		{in: "reviews-binding-v1-only.yaml",
 //			out: "reviews-sni-binding-v1-only.yaml"},
-// TODO restore
-//		{in: "reviews-exposure.yaml",
-//			out: "reviews-sni-exposure.yaml"},
+		{in: "reviews-exposure.yaml",
+			out: "reviews-sni-exposure.yaml",
+			store: "reviews-exposure-starter.yaml"},
 	}
 
 	for _, tc := range tt {
@@ -52,7 +56,17 @@ func TestBindingToSNIConfiguration(t *testing.T) {
 			}
 			defer out.Close() // nolint: errcheck
 
-			if err := readAndConvertSNI(in, out); err != nil {
+			var store istiomodel.ConfigStore
+			if tc.store != "" {
+				store, err = createTestConfigStoreFromFile("../../../test/expose-binding/" + tc.store)
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				store, _ = createTestConfigStore([]istiomodel.Config{})
+			}
+
+			if err := readAndConvertSNI(in, out, store); err != nil {
 				t.Fatalf("Unexpected error converting configs: %v", err)
 			}
 
@@ -62,7 +76,7 @@ func TestBindingToSNIConfiguration(t *testing.T) {
 }
 
 // readAndConvertSNI converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvertSNI(reader io.Reader, writer io.Writer) error {
+func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.ConfigStore) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
@@ -78,7 +92,7 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer) error {
 			"cluster2": 80,
 		},
 	}
-	istioConfig, err := model.ConvertBindingsAndExposuresSNI(configs, ci)
+	istioConfig, err := model.ConvertBindingsAndExposuresSNI(configs, ci, store)
 	if err != nil {
 		return err
 	}
@@ -95,4 +109,49 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer) error {
 	}
 
 	return nil
+}
+
+func createTestConfigStoreFromFile(fname string) (istiomodel.ConfigStore, error) {
+	configs := []istiomodel.Config{}
+	
+	if fname != "" {
+		reader, err := os.Open(fname)
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close() // nolint: errcheck
+
+		configs, err = readIstioConfigs(reader)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return createTestConfigStore(configs)
+}
+
+func createTestConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore, error) {
+	out := memory.Make(istiomodel.IstioConfigTypes)
+	for _, config := range configs {
+		_, err := out.Create(config)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func readIstioConfigs(reader io.Reader) ([]istiomodel.Config, error) {
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	config, _, err := istiocrd.ParseInputs(string(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
