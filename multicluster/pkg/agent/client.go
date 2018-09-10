@@ -96,7 +96,7 @@ func (c *Client) update() {
 			if err != nil {
 				log.Errora(err)
 			}
-			log.Debugf("RemoteServiceVinfing deleted for cluser [%s] deleted", c.peer.ID)
+			log.Debugf("RemoteServiceBinding deleted for cluser [%s] deleted", c.peer.ID)
 
 			// Use the reconcile to generate the inferred Istio configs for the new binding
 			deleted, err := reconcile.DeleteMulticlusterConfig(c.istioStore, *rsb, c.config)
