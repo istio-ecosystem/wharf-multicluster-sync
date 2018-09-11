@@ -36,7 +36,7 @@ func TestServiceToBinding(t *testing.T) {
 			out: "sample-exposure.yaml"},
 		{in: "rshriram-demo-exposure.yaml",
 			out: "rshriram-demo-exposure.yaml"},
-		{in: "reviews-exposure.yaml",
+		{in: "reviews-exposure-both.yaml",
 			out: "reviews-exposure.yaml"},
 		{in: "ratings-exposure.yaml",
 			out: "ratings-exposure.yaml"},

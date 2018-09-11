@@ -6,16 +6,3 @@ metadata:
 spec:
   exposed:
   - name: reviews
----
-# Expose the "reviews" service, subset v1 only, only to cluster1, with alternate name
-apiVersion: multicluster.istio.io/v1alpha1
-kind: ServiceExpositionPolicy
-metadata:
-  name: reviews-v1
-spec:
-  exposed:
-  - name: reviews
-    alias: reviews-v1
-    subset: v1
-    clusters:
-    - cluster1

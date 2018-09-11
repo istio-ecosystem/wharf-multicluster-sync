@@ -102,7 +102,7 @@ func TestReconcile(t *testing.T) {
 			modifications: loadIstioConfigList("reviews-sni-exposure-v1-only-modifications.yaml.golden", t),
 			style:         mcmodel.DirectIngressStyle},
 		// Case 6: Direct Ingress style, no subset, DR already exists
-		{added: loadConfig("reviews-exposure-nosubset.yaml", t),
+		{added: loadConfig("reviews-exposure.yaml", t),
 			istioConfig:   loadIstioConfigListFrom("reviews-exposure-starter.yaml", "../test/expose-binding/", t),
 			additions:     loadIstioConfigList("reviews-sni-exposure-additions.yaml.golden", t),
 			modifications: loadIstioConfigList("reviews-sni-exposure-modifications.yaml.golden", t),

@@ -36,7 +36,7 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 			out: "reviews-sni-binding.yaml"},
 		{in: "reviews-binding-v1-only.yaml",
 			out: "reviews-sni-binding-v1-only.yaml"},
-		{in: "reviews-exposure.yaml",
+		{in: "reviews-exposure-both.yaml",
 			out:   "reviews-sni-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
 	}
