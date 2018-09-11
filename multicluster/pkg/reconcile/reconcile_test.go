@@ -7,6 +7,7 @@
 package reconcile
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,6 +21,7 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 
 	multiclustercrd "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 )
 
 // TODO Merge with version in pkg/agent/config/kube/crd?
@@ -43,24 +45,25 @@ func TestReconcile(t *testing.T) {
 	}
 
 	tt := []struct {
-		added         istiomodel.Config
-		deleted       istiomodel.Config
-		modified      istiomodel.Config
+		added         *istiomodel.Config
+		deleted       *istiomodel.Config
+		modified      *istiomodel.Config
 		istioConfig   []istiomodel.Config
 		additions     []istiomodel.Config
 		deletions     []istiomodel.Config
 		modifications []istiomodel.Config
 		wantException bool
+		style         string
 	}{
 		// Case 0: if we have already configured, adding again won't change things
 		{added: loadConfig("rshriram-demo-exposure.yaml", t),
-			istioConfig: loadIstioConfigList("rshriram-demo-exposure.yaml", t)},
+			istioConfig: loadIstioConfigList("rshriram-demo-exposure.yaml.golden", t)},
 		// Case 1: If we have nothing configured, adding creates things
 		{added: loadConfig("rshriram-demo-exposure.yaml", t),
-			additions: loadIstioConfigList("rshriram-demo-exposure.yaml", t)},
+			additions: loadIstioConfigList("rshriram-demo-exposure.yaml.golden", t)},
 		// Case 2: If we delete, the config should go away
 		{deleted: loadConfig("rshriram-demo-exposure.yaml", t),
-			istioConfig: loadIstioConfigList("rshriram-demo-exposure.yaml", t),
+			istioConfig: loadIstioConfigList("rshriram-demo-exposure.yaml.golden", t),
 			deletions: []istiomodel.Config{
 				istiomodel.Config{
 					ConfigMeta: istiomodel.ConfigMeta{
@@ -88,41 +91,75 @@ func TestReconcile(t *testing.T) {
 		// Case 3: If we delete things never realized, we should (internally) fail reconciliation
 		{deleted: loadConfig("rshriram-demo-exposure.yaml", t),
 			wantException: true},
+		// Case 4: Direct Ingress style
+		{added: loadConfig("rshriram-demo-exposure.yaml", t),
+			istioConfig: loadIstioConfigList("banix-demo-exposure.yaml.golden", t),
+			style:       mcmodel.DirectIngressStyle},
+		// Case 5: Direct Ingress style with subset
+		{added: loadConfig("reviews-exposure-v1-only.yaml", t),
+			istioConfig:   loadIstioConfigListFrom("reviews-exposure-starter.yaml", "../test/expose-binding/", t),
+			additions:     loadIstioConfigList("reviews-sni-exposure-v1-only-additions.yaml.golden", t),
+			modifications: loadIstioConfigList("reviews-sni-exposure-v1-only-modifications.yaml.golden", t),
+			style:         mcmodel.DirectIngressStyle},
+		// Case 6: Direct Ingress style, no subset, DR already exists
+		{added: loadConfig("reviews-exposure-nosubset.yaml", t),
+			istioConfig:   loadIstioConfigListFrom("reviews-exposure-starter.yaml", "../test/expose-binding/", t),
+			additions:     loadIstioConfigList("reviews-sni-exposure-additions.yaml.golden", t),
+			modifications: loadIstioConfigList("reviews-sni-exposure-modifications.yaml.golden", t),
+			style:         mcmodel.DirectIngressStyle},
 	}
 
 	for i, tc := range tt {
 		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
+			if tc.style != "" {
+				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style)
+			} else {
+				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle)
+			}
 
 			cs, err := createDebugConfigStore(tc.istioConfig)
 			if err != nil {
 				t.Error(err)
 			}
 
-			additions, modifications, errAdditions := AddMulticlusterConfig(cs, tc.added, ci)
-			if errAdditions == nil {
-				err = checkEqualConfigs(additions, tc.additions)
-				if err != nil {
-					t.Error(multierror.Prefix(err, "Generated additions unexpected"))
-				}
-				err = checkEqualConfigs(modifications, tc.modifications)
-				if err != nil {
-					t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+			var errAdditions error
+			var errModifications error
+			var errDeletions error
+			if tc.added != nil {
+				var additions []istiomodel.Config
+				var modifications []istiomodel.Config
+				additions, modifications, errAdditions = AddMulticlusterConfig(cs, *tc.added, ci)
+				if errAdditions == nil {
+					err = checkEqualConfigs(additions, tc.additions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated additions unexpected"))
+					}
+					err = checkEqualConfigs(modifications, tc.modifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
 				}
 			}
 
-			modifications, errModifications := ModifyMulticlusterConfig(cs, tc.modified, ci)
-			if errModifications == nil {
-				err = checkEqualConfigs(modifications, tc.modifications)
-				if err != nil {
-					t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+			if tc.modified != nil {
+				var modifications []istiomodel.Config
+				modifications, errModifications = ModifyMulticlusterConfig(cs, *tc.modified, ci)
+				if errModifications == nil {
+					err = checkEqualConfigs(modifications, tc.modifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
 				}
 			}
 
-			deletions, errDeletions := DeleteMulticlusterConfig(cs, tc.deleted, ci)
-			if errDeletions == nil {
-				err = checkEqualConfigMetas(deletions, tc.deletions)
-				if err != nil {
-					t.Error(multierror.Prefix(err, "Proposed deletions unexpected"))
+			if tc.deleted != nil {
+				var deletions []istiomodel.Config
+				deletions, errDeletions = DeleteMulticlusterConfig(cs, *tc.deleted, ci)
+				if errDeletions == nil {
+					err = checkEqualConfigMetas(deletions, tc.deletions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Proposed deletions unexpected"))
+					}
 				}
 			}
 
@@ -145,14 +182,14 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func loadConfig(fname string, t *testing.T) istiomodel.Config {
+func loadConfig(fname string, t *testing.T) *istiomodel.Config {
 	configs := loadConfigList(fname, t)
 
 	if len(configs) != 1 {
 		t.Fatal(fmt.Errorf("Expected 1 config, got %d", len(configs)))
 	}
 
-	return configs[0]
+	return &configs[0]
 }
 
 // loadConfigList loads *Multicluster* configuration (VirtualService, Gateway, etc) from the test directory
@@ -178,7 +215,12 @@ func loadConfigList(fname string, t *testing.T) []istiomodel.Config {
 
 // loadIstioConfigList loads *Istio* configuration (VirtualService, Gateway, etc) from the test directory
 func loadIstioConfigList(fname string, t *testing.T) []istiomodel.Config {
-	reader, err := os.Open("../test/istio-expose-binding/" + fname)
+	return loadIstioConfigListFrom(fname, "../test/istio-expose-binding/", t)
+}
+
+// loadIstioConfigListFrom loads *Istio* configuration (VirtualService, Gateway, etc) from the test directory
+func loadIstioConfigListFrom(fname string, dirname string, t *testing.T) []istiomodel.Config {
+	reader, err := os.Open(dirname + fname)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +272,9 @@ func checkEqualConfigs(configs []istiomodel.Config, expected []istiomodel.Config
 		}
 		// The metadata will be close enough because it was looked up, only compare the Specs
 		if !reflect.DeepEqual(config.Spec, expectedConfig.Spec) {
-			return fmt.Errorf("Configuration of %s %s.%s %#v unexpected (expected %#v)", config.Type, config.Name, config.Namespace, config.Spec, expectedConfig.Spec)
+			wanted, _ := json.Marshal(expectedConfig.Spec)
+			got, _ := json.Marshal(config.Spec)
+			return fmt.Errorf("Configuration of %s %s.%s %s unexpected (expected %s)", config.Type, config.Name, config.Namespace, string(got), string(wanted))
 		}
 	}
 

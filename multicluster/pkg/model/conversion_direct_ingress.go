@@ -8,6 +8,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 
@@ -19,7 +20,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-// ConvertBindingsAndExposuresSNI converts a list of multicluster SEP and RDS configuration
+// ConvertBindingsAndExposuresDirectIngress converts a list of multicluster SEP and RDS configuration
 // into Istio configuration.  It may consult existing Istio configuration in 'store' (e.g. DestinationRule subsets)
 func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
@@ -32,8 +33,16 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 	}
 	for _, dr := range drConfigs {
 		spec := dr.Spec.(*v1alpha3.DestinationRule)
-		dr.ResourceVersion = "" // Don't tie rule to a specific version
-		drs[spec.Host] = &dr
+		
+		// Deep copy some of DR so we don't modify the original while merging for subsets
+		newDR := dr
+		newSpec := *spec
+		newSpec.Subsets = make([]*v1alpha3.Subset, len(newSpec.Subsets))
+		copy(newSpec.Subsets, spec.Subsets)
+		newDR.Spec = &newSpec
+		newDR.ResourceVersion = "" // Don't tie rule to a specific version
+
+		drs[spec.Host] = &newDR
 	}
 
 	// Process each Multicluster Config SEP or RSB
@@ -227,6 +236,11 @@ func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_Exposed
 		})
 	}
 
+	// Ensure the subsets are sorted (not needed for Istio, needed for go tests)
+	sort.Slice(spec.Subsets, func(i, j int) bool {
+	    return spec.Subsets[i].Name < spec.Subsets[j].Name
+	})
+
 	// Add the dr to the store so that if another ServiceExpositionPolicy refers to the same
 	// service we will modify the DestinationRule we just created.
 
@@ -258,7 +272,7 @@ func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService,
 			Group:   istiomodel.Gateway.Group + istiomodel.IstioAPIGroupDomain,
 			Version: istiomodel.Gateway.Version,
 			Name:    exposedServiceGatewayName(es, config),
-			// Namespace:   config.Namespace,
+			Namespace:   meta_v1.NamespaceDefault,	// TODO config.Namespace?
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.Gateway{
@@ -288,7 +302,7 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 			Group:   istiomodel.VirtualService.Group + istiomodel.IstioAPIGroupDomain,
 			Version: istiomodel.VirtualService.Version,
 			Name:    fmt.Sprintf("ingressgateway-to-%s-%s", exposedServiceName(es), getNamespace(config)),
-			// Namespace:   config.Namespace,
+			Namespace:   meta_v1.NamespaceDefault,	// TODO config.Namespace?
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.VirtualService{

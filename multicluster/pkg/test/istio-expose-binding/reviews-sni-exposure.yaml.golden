@@ -7,9 +7,6 @@ metadata:
 spec:
   host: reviews.default.svc.cluster.local
   subsets:
-  - labels:
-      version: v1
-    name: v1
   - name: notls
     trafficPolicy:
       tls: {}
@@ -18,6 +15,9 @@ spec:
     name: notls-v1
     trafficPolicy:
       tls: {}
+  - labels:
+      version: v1
+    name: v1
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway

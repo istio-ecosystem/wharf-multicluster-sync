@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  creationTimestamp: null
+  name: dest-rule-name
+  namespace: default
+spec:
+  host: reviews.default.svc.cluster.local
+  subsets:
+  - labels:
+      version: v1
+    name: notls-v1
+    trafficPolicy:
+      tls: {}
+  - labels:
+      version: v1
+    name: v1

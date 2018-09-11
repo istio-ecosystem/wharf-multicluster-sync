@@ -1,0 +1,44 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: istio-ingressgateway-reviews-default
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - reviews.default.svc.cluster.global
+    port:
+      name: reviews-default-80
+      number: 80
+      protocol: TLS
+    tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: ingressgateway-to-reviews-default
+  namespace: default
+spec:
+  gateways:
+  - istio-ingressgateway-reviews-default
+  hosts:
+  - reviews.default.svc.cluster.global
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - reviews.default.svc.cluster.global
+    route:
+    - destination:
+        host: reviews.default.svc.cluster.local
+        port:
+          number: 80
+        subset: notls
