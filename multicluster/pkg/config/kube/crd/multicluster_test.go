@@ -20,8 +20,6 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
-	"istio.io/istio/pilot/test/util"
-
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -109,45 +107,6 @@ func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
 	}
 
 	return config, nil
-}
-
-func TestBindingToConfiguration(t *testing.T) {
-	tt := []struct {
-		in  string
-		out string
-	}{
-		{in: "sample-binding.yaml",
-			out: "sample-binding.yaml"},
-		{in: "sample-exposure.yaml",
-			out: "sample-exposure.yaml"},
-		{in: "rshriram-demo-binding.yaml",
-			out: "rshriram-demo-binding.yaml"},
-		{in: "rshriram-demo-exposure.yaml",
-			out: "rshriram-demo-exposure.yaml"},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.in, func(t *testing.T) {
-			in, err := os.Open("../../../test/expose-binding/" + tc.in)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer in.Close() // nolint: errcheck
-
-			outFilename := "../../../test/istio-expose-binding/" + tc.out
-			out, err := os.Create(outFilename)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer out.Close() // nolint: errcheck
-
-			if err := readAndConvert(in, out); err != nil {
-				t.Fatalf("Unexpected error converting configs: %v", err)
-			}
-
-			util.CompareYAML(outFilename, t)
-		})
-	}
 }
 
 func TestValidation(t *testing.T) {
