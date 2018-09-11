@@ -198,7 +198,7 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 			"cluster2": 80,
 		},
 	}
-	istioConfigs, err := model.ConvertBindingsAndExposures(configs, ci)
+	istioConfigs, err := model.ConvertBindingsAndExposuresEgressIngress(configs, ci)
 	if err != nil {
 		return err
 	}

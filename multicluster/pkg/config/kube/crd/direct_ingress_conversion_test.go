@@ -93,7 +93,7 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.Conf
 			"cluster2": 80,
 		},
 	}
-	istioConfigs, err := model.ConvertBindingsAndExposuresSNI(configs, ci, store)
+	istioConfigs, err := model.ConvertBindingsAndExposuresDirectIngress(configs, ci, store)
 	if err != nil {
 		return err
 	}

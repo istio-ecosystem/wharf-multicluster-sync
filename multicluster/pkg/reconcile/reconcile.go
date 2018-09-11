@@ -22,7 +22,7 @@ import (
 // and returns the new and modified Istio configurations needed to implement the desired multicluster config.
 func AddMulticlusterConfig(store istiomodel.ConfigStore, newconfig istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, []istiomodel.Config, error) {
 
-	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{newconfig}, ci)
+	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{newconfig}, ci, store)
 	if err != nil {
 		return []istiomodel.Config{}, []istiomodel.Config{}, err
 	}
@@ -47,7 +47,7 @@ func AddMulticlusterConfig(store istiomodel.ConfigStore, newconfig istiomodel.Co
 // and returns the new and modified Istio configurations needed to implement the desired multicluster config.
 func ModifyMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, error) {
 
-	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{config}, ci)
+	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{config}, ci, store)
 	if err != nil {
 		return []istiomodel.Config{}, err
 	}
@@ -73,7 +73,7 @@ func ModifyMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Co
 func DeleteMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, error) {
 
 	var err error
-	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{config}, ci)
+	istioConfigs, err := model.ConvertBindingsAndExposures([]istiomodel.Config{config}, ci, store)
 	if err != nil {
 		return nil, err
 	}

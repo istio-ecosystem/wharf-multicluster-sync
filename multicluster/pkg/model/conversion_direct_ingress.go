@@ -21,7 +21,7 @@ import (
 
 // ConvertBindingsAndExposuresSNI converts a list of multicluster SEP and RDS configuration
 // into Istio configuration.  It may consult existing Istio configuration in 'store' (e.g. DestinationRule subsets)
-func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore) ([]istiomodel.Config, error) {
+func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
 	// Construct map of hostname -> DestinationRule
