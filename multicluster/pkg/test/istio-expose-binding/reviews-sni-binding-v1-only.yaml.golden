@@ -8,7 +8,7 @@ metadata:
   namespace: default
 spec:
   endpoints:
-  - address: istio-egressgateway.istio-system.svc.cluster.local
+  - address: 127.0.0.1
     ports:
       http: 80
   hosts:

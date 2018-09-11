@@ -136,11 +136,15 @@ func serviceToDestinationRuleSNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster
 					ClientCertificate: "/etc/certs/cert-chain.pem",
 					PrivateKey:        "/etc/certs/key.pem",
 					CaCertificates:    "/etc/certs/root-cert.pem",
-					Sni:               rsHostname(rs),
+					Sni:               rsAliasHostname(rs),
 				},
 			},
 		},
 	}
+}
+
+func rsAliasHostname(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.global", rs.Name, remoteServiceNamespace(rs))
 }
 
 func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config) ([]istiomodel.Config, error) {

@@ -22,7 +22,7 @@ import (
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 )
 
-func TestBindingToSNIConfiguration(t *testing.T) {
+func TestBindingToDirectIngressConfiguration(t *testing.T) {
 	tt := []struct {
 		in    string // Filename of SEP and RSBs
 		store string // Filename for baseline Istio configuration for merging
@@ -34,9 +34,8 @@ func TestBindingToSNIConfiguration(t *testing.T) {
 			out: "banix-demo-exposure.yaml"},
 		{in: "reviews-binding.yaml",
 			out: "reviews-sni-binding.yaml"},
-		// TODO restore
-		//		{in: "reviews-binding-v1-only.yaml",
-		//			out: "reviews-sni-binding-v1-only.yaml"},
+		{in: "reviews-binding-v1-only.yaml",
+			out: "reviews-sni-binding-v1-only.yaml"},
 		{in: "reviews-exposure.yaml",
 			out:   "reviews-sni-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
