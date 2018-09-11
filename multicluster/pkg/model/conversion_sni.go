@@ -32,11 +32,11 @@ func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo, sto
 	}
 	for _, dr := range drConfigs {
 		spec := dr.Spec.(*v1alpha3.DestinationRule)
-		dr.ResourceVersion = ""		// Don't tie rule to a specific version
+		dr.ResourceVersion = "" // Don't tie rule to a specific version
 		drs[spec.Host] = &dr
 	}
 
-	// Process each Multicluster Config SEP or RSB 
+	// Process each Multicluster Config SEP or RSB
 	for _, mc := range mcs {
 		var istio []istiomodel.Config
 		var err error
@@ -57,7 +57,7 @@ func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo, sto
 	// Remove duplicates (e.g. DRs for the same host exposed under different aliases),
 	// favoring duplicates later in the sequence.
 	unique := make([]istiomodel.Config, 0)
-	names := make(map[string]int)	// map of type+namespace+name -> position
+	names := make(map[string]int) // map of type+namespace+name -> position
 	for _, config := range out {
 		key := fmt.Sprintf("%s+%s+%s", config.Type, config.Namespace, config.Name)
 		pos, ok := names[key]
@@ -68,7 +68,7 @@ func ConvertBindingsAndExposuresSNI(mcs []istiomodel.Config, ci ClusterInfo, sto
 			unique = append(unique, config)
 		}
 	}
-	
+
 	return unique, nil
 }
 
@@ -77,7 +77,7 @@ func convertRSBSNI(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding,
 
 	for _, remote := range rsb.Remote {
 		for _, svc := range remote.Services {
-			out = append(out, *serviceToServiceEntrySNI(svc, config))
+			out = append(out, *serviceToServiceEntrySNI(svc, config, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
 			out = append(out, *serviceToDestinationRuleSNI(svc, config))
 		}
 	}
@@ -86,7 +86,7 @@ func convertRSBSNI(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding,
 }
 
 // serviceToServiceEntry() creates a ServiceEntry pointing to istio-egressgateway
-func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
+func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, ip string, port uint32) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.ServiceEntry.Type,
@@ -109,8 +109,8 @@ func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Re
 			Resolution: v1alpha3.ServiceEntry_STATIC,
 			Endpoints: []*v1alpha3.ServiceEntry_Endpoint{
 				&v1alpha3.ServiceEntry_Endpoint{
-					Address: fmt.Sprintf("istio-egressgateway.%s.svc.cluster.local", IstioSystemNamespace),
-					Ports:   map[string]uint32{"http": 80},
+					Address: ip,
+					Ports:   map[string]uint32{"http": port},
 				},
 			},
 		},
@@ -189,7 +189,7 @@ func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_Exposed
 				Annotations: annotations(config),
 			},
 			Spec: &v1alpha3.DestinationRule{
-				Host: hostname,
+				Host:    hostname,
 				Subsets: []*v1alpha3.Subset{},
 			},
 		}
@@ -199,7 +199,7 @@ func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_Exposed
 
 	// Ensure dr has a subset named 'notls' or 'notls-<orig>' for the subset
 	spec := dr.Spec.(*v1alpha3.DestinationRule)
-	subset := getSubset(spec, notlsSubsetName(es)) 
+	subset := getSubset(spec, notlsSubsetName(es))
 	if subset == nil {
 		var labels map[string]string
 		if es.Subset != "" {
@@ -245,7 +245,7 @@ func getSubset(rule *v1alpha3.DestinationRule, name string) *v1alpha3.Subset {
 	}
 
 	return nil
-} 
+}
 
 func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{

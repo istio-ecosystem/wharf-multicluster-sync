@@ -77,7 +77,7 @@ spec:
       - server.ns2.svc.cluster.global
     route:
     - destination:
-        host: cluster2
+        host: cluster2.myorg
         port:
           number: 80
 ---
@@ -97,7 +97,7 @@ spec:
     ports:
       tcp: 80
   hosts:
-  - cluster2
+  - cluster2.myorg
   ports:
   - name: tcp
     number: 80

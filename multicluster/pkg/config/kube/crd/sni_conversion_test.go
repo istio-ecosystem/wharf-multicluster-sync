@@ -7,14 +7,15 @@
 package crd
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
-	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/config/memory"
+	istiomodel "istio.io/istio/pilot/pkg/model"
 
 	"istio.io/istio/pilot/test/util"
 
@@ -23,9 +24,9 @@ import (
 
 func TestBindingToSNIConfiguration(t *testing.T) {
 	tt := []struct {
-		in  string		// Filename of SEP and RSBs
-		store string	// Filename for baseline Istio configuration for merging
-		out string		// Filename for generated Istio configuration
+		in    string // Filename of SEP and RSBs
+		store string // Filename for baseline Istio configuration for merging
+		out   string // Filename for generated Istio configuration
 	}{
 		{in: "rshriram-demo-binding.yaml",
 			out: "banix-demo-binding.yaml"},
@@ -33,11 +34,11 @@ func TestBindingToSNIConfiguration(t *testing.T) {
 			out: "banix-demo-exposure.yaml"},
 		{in: "reviews-binding.yaml",
 			out: "reviews-sni-binding.yaml"},
-// TODO restore
-//		{in: "reviews-binding-v1-only.yaml",
-//			out: "reviews-sni-binding-v1-only.yaml"},
+		// TODO restore
+		//		{in: "reviews-binding-v1-only.yaml",
+		//			out: "reviews-sni-binding-v1-only.yaml"},
 		{in: "reviews-exposure.yaml",
-			out: "reviews-sni-exposure.yaml",
+			out:   "reviews-sni-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
 	}
 
@@ -92,7 +93,7 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.Conf
 			"cluster2": 80,
 		},
 	}
-	istioConfig, err := model.ConvertBindingsAndExposuresSNI(configs, ci, store)
+	istioConfigs, err := model.ConvertBindingsAndExposuresSNI(configs, ci, store)
 	if err != nil {
 		return err
 	}
@@ -103,7 +104,21 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.Conf
 		istiomodel.DestinationRule,
 		istiomodel.ServiceEntry,
 	}
-	err = writeIstioYAMLOutput(configDescriptor, istioConfig, writer)
+
+	// Ensure every generated config is valid
+	for _, istioConfig := range istioConfigs {
+		schema, exists := configDescriptor.GetByType(istioConfig.Type)
+		if !exists {
+			return fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(istioConfig.Type), istioConfig.Name)
+		}
+
+		err = schema.Validate(istioConfig.Name, istioConfig.Namespace, istioConfig.Spec)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = writeIstioYAMLOutput(configDescriptor, istioConfigs, writer)
 	if err != nil {
 		return err
 	}
@@ -113,7 +128,7 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.Conf
 
 func createTestConfigStoreFromFile(fname string) (istiomodel.ConfigStore, error) {
 	configs := []istiomodel.Config{}
-	
+
 	if fname != "" {
 		reader, err := os.Open(fname)
 		if err != nil {

@@ -8,6 +8,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 
@@ -142,7 +143,7 @@ func serviceToGateway(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServ
 }
 
 // serviceToVirtualService() creates a VirtualService with sniHosts
-func serviceToVirtualService(cluster string, rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
+func serviceToVirtualService(remote *v1alpha1.RemoteServiceBinding_RemoteCluster, rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.VirtualService.Type,
@@ -166,7 +167,7 @@ func serviceToVirtualService(cluster string, rs *v1alpha1.RemoteServiceBinding_R
 					Route: []*v1alpha3.DestinationWeight{
 						&v1alpha3.DestinationWeight{
 							Destination: &v1alpha3.Destination{
-								Host: cluster,
+								Host: clusterHostname(remote),
 								Port: &v1alpha3.PortSelector{
 									Port: &v1alpha3.PortSelector_Number{
 										Number: 80,
@@ -182,18 +183,18 @@ func serviceToVirtualService(cluster string, rs *v1alpha1.RemoteServiceBinding_R
 }
 
 // clusterToServiceEntry() creates a ServiceEntry pointing to a remote cluster
-func clusterToServiceEntry(cluster string, ip string, port uint32, config istiomodel.Config) *istiomodel.Config {
+func clusterToServiceEntry(remote *v1alpha1.RemoteServiceBinding_RemoteCluster, ip string, port uint32, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.ServiceEntry.Type,
 			Group:       istiomodel.ServiceEntry.Group + istiomodel.IstioAPIGroupDomain,
 			Version:     istiomodel.ServiceEntry.Version,
-			Name:        fmt.Sprintf("service-entry-ingress-gateway-%s", cluster),
+			Name:        fmt.Sprintf("service-entry-ingress-gateway-%s", remote.Cluster),
 			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.ServiceEntry{
-			Hosts:     []string{cluster},
+			Hosts:     []string{clusterHostname(remote)},
 			Addresses: []string{"127.8.8.8"}, // dummy
 			Ports: []*v1alpha3.Port{
 				&v1alpha3.Port{
@@ -222,12 +223,16 @@ func convertRSB(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci
 			out = append(out, *serviceToServiceEntry(svc, config))
 			out = append(out, *serviceToDestinationRule(svc, config))
 			out = append(out, *serviceToGateway(svc, config))
-			out = append(out, *serviceToVirtualService(remote.Cluster, svc, config))
+			out = append(out, *serviceToVirtualService(remote, svc, config))
 		}
-		out = append(out, *clusterToServiceEntry(remote.Cluster, ci.Ip(remote.Cluster), ci.Port(remote.Cluster), config))
+		out = append(out, *clusterToServiceEntry(remote, ci.Ip(remote.Cluster), ci.Port(remote.Cluster), config))
 	}
 
 	return out, nil
+}
+
+func clusterHostname(remote *v1alpha1.RemoteServiceBinding_RemoteCluster) string {
+	return fmt.Sprintf("%s.myorg", strings.ToLower(remote.Cluster))
 }
 
 func expositionToDestinationRule(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {

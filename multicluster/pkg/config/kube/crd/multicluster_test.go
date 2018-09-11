@@ -23,6 +23,8 @@ import (
 	"istio.io/istio/pilot/test/util"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 // debugClusterInfo simulates the function of K8s Cluster Registry
@@ -196,7 +198,7 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 			"cluster2": 80,
 		},
 	}
-	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci)
+	istioConfigs, err := model.ConvertBindingsAndExposures(configs, ci)
 	if err != nil {
 		return err
 	}
@@ -207,7 +209,22 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 		istiomodel.DestinationRule,
 		istiomodel.ServiceEntry,
 	}
-	err = writeIstioYAMLOutput(configDescriptor, istioConfig, writer)
+
+	// Ensure every generated config is valid
+	for _, istioConfig := range istioConfigs {
+		schema, exists := configDescriptor.GetByType(istioConfig.Type)
+		if !exists {
+			return fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(istioConfig.Type), istioConfig.Name)
+		}
+
+		err = schema.Validate(istioConfig.Name, istioConfig.Namespace, istioConfig.Spec)
+		if err != nil {
+			return multierror.Prefix(err, fmt.Sprintf("Generated %s %s/%s does not validate",
+				istioConfig.Type, istioConfig.Namespace, istioConfig.Name))
+		}
+	}
+
+	err = writeIstioYAMLOutput(configDescriptor, istioConfigs, writer)
 	if err != nil {
 		return err
 	}

@@ -77,7 +77,7 @@ spec:
       - remoteFooA.my-remote.svc.cluster.global
     route:
     - destination:
-        host: clusterC
+        host: clusterc.myorg
         port:
           number: 80
 ---
@@ -97,7 +97,7 @@ spec:
     ports:
       tcp: 80
   hosts:
-  - clusterC
+  - clusterc.myorg
   ports:
   - name: tcp
     number: 80
