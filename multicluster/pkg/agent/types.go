@@ -1,5 +1,11 @@
 package agent
 
+const (
+	ConnectionModeKey       = "connection"
+	ConnectionModeLive      = "live"
+	ConnectionModePotential = "potential"
+)
+
 // ExposedServices is a struct that holds list of entries each holding the
 // information about an exposed service. JSON format of this struct is being
 // sent back from a remote cluster's agent in response to an exposition request.

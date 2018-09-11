@@ -2,6 +2,8 @@ apiVersion: multicluster.istio.io/v1alpha1
 kind: RemoteServiceBinding
 metadata:
   creationTimestamp: null
+  labels:
+    connection: live
   name: -services
   namespace: default
 spec:

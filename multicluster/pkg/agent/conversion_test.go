@@ -12,8 +12,8 @@ import (
 	"os"
 	"testing"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/ghodss/yaml"
+	multierror "github.com/hashicorp/go-multierror"
 
 	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
 	"istio.io/istio/pilot/pkg/config/memory"
@@ -22,8 +22,8 @@ import (
 
 	"istio.io/istio/pilot/test/util"
 
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 )
 
 // TestServiceToBinding tests agent.exposedServicesToBinding()
@@ -78,7 +78,7 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterID string, addr s
 		return multierror.Prefix(err, "couldn't make debug store:")
 	}
 
-    store := mcmodel.MakeMCStore(cs)
+	store := mcmodel.MakeMCStore(cs)
 	server, err := NewServer(addr, port, store)
 	if err != nil {
 		return err
@@ -96,10 +96,10 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterID string, addr s
 		return err
 	}
 
-	exposedSvcs := ExposedServices{ Services: svcs }
-	binding := client.exposedServicesToBinding(&exposedSvcs)
+	exposedSvcs := ExposedServices{Services: svcs}
+	binding := client.exposedServicesToBinding(&exposedSvcs, ConnectionModeLive)
 
-	err = writeMCYAMLOutput(mcmodel.MultiClusterConfigTypes, []istiomodel.Config { *binding }, writer)
+	err = writeMCYAMLOutput(mcmodel.MultiClusterConfigTypes, []istiomodel.Config{*binding}, writer)
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 
 const (
 	pollInterval = 5 * time.Second
+	MODE_ENV     = "CONNECTION_MODE"
 )
 
 // Client is an agent client meant to connect to an agent server on a peered
@@ -115,7 +117,7 @@ func (c *Client) update() {
 	}
 
 	// TODO handle updates
-	binding := c.exposedServicesToBinding(exposed)
+	binding := c.exposedServicesToBinding(exposed, getConnectionMode(c.peer.ID))
 	c.createRemoteServiceBinding(binding)
 }
 
@@ -182,7 +184,7 @@ func (c *Client) needsUpdate(exposed *ExposedServices) bool {
 	return true
 }
 
-func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *model.Config {
+func (c *Client) exposedServicesToBinding(exposed *ExposedServices, connectionMode string) *model.Config {
 	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
 	ns := ""
 	for i, service := range exposed.Services {
@@ -201,6 +203,9 @@ func (c *Client) exposedServicesToBinding(exposed *ExposedServices) *model.Confi
 			Version:   mcmodel.RemoteServiceBinding.Version,
 			Name:      name,
 			Namespace: ns,
+			Labels: map[string]string{
+				ConnectionModeKey: connectionMode,
+			},
 		},
 		Spec: &v1alpha1.RemoteServiceBinding{
 			Remote: []*v1alpha1.RemoteServiceBinding_RemoteCluster{
@@ -226,4 +231,16 @@ func (c *Client) remoteServiceBinding() *model.Config {
 		}
 	}
 	return nil
+}
+
+// getConnectionMode returns the mode ("active" or "potential") for new bindings for the peer
+func getConnectionMode(peerID string) string {
+	// TODO Watch a ConfigMap and use that value to let the user dynamically set the mode
+	// for each cluster.
+	mode := os.Getenv(MODE_ENV)
+	if mode != "" {
+		return mode
+	}
+
+	return ConnectionModeLive
 }
