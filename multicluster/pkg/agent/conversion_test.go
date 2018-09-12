@@ -7,6 +7,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
@@ -42,6 +43,11 @@ func TestServiceToBinding(t *testing.T) {
 			out: "ratings-exposure.yaml"},
 	}
 
+	clusterConfig, err := loadConfig("../test/mc-agent/cluster_a.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, tc := range tt {
 		t.Run(tc.in, func(t *testing.T) {
 			in, err := os.Open("../test/expose-binding/" + tc.in)
@@ -57,7 +63,7 @@ func TestServiceToBinding(t *testing.T) {
 			}
 			defer out.Close() // nolint: errcheck
 
-			if err := readAndConvert(in, out, "clusterA", "127.0.0.1", 8080); err != nil {
+			if err := readAndConvert(in, out, clusterConfig); err != nil {
 				t.Fatalf("Unexpected error converting configs: %v", err)
 			}
 
@@ -67,7 +73,7 @@ func TestServiceToBinding(t *testing.T) {
 }
 
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvert(reader io.Reader, writer io.Writer, clusterID string, addr string, port uint16) error {
+func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *ClusterConfig) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
@@ -79,12 +85,12 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterID string, addr s
 	}
 
 	store := mcmodel.MakeMCStore(cs)
-	server, err := NewServer(addr, port, store)
+	server, err := NewServer(clusterConfig, store)
 	if err != nil {
 		return err
 	}
 
-	svcs := server.exposedServices(clusterID)
+	svcs := server.exposedServices(clusterConfig.ID)
 
 	var config ClusterConfig
 	var peer ClusterConfig
@@ -97,7 +103,7 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterID string, addr s
 	}
 
 	exposedSvcs := ExposedServices{Services: svcs}
-	binding := client.exposedServicesToBinding(&exposedSvcs, ConnectionModeLive)
+	binding := client.createRemoteServiceBinding(&exposedSvcs, ConnectionModeLive)
 
 	err = writeMCYAMLOutput(mcmodel.MultiClusterConfigTypes, []istiomodel.Config{*binding}, writer)
 	if err != nil {
@@ -157,4 +163,22 @@ func createDebugMCConfigStore(configs []istiomodel.Config) (istiomodel.ConfigSto
 		}
 	}
 	return out, nil
+}
+
+// loadConfig will load the cluster configuration from the provided JSON file
+func loadConfig(file string) (*ClusterConfig, error) {
+	jsonFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer jsonFile.Close()
+
+	var config ClusterConfig
+	bytes, _ := ioutil.ReadAll(jsonFile)
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }

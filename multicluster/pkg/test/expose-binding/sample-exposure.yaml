@@ -10,5 +10,5 @@ spec:
     alias: FooA
     subset: v1
     clusters:
-    - clusterA
-    - clusterB
+    - cluster-a
+    - cluster-b
