@@ -15,7 +15,7 @@ spec:
   - server.ns2.svc.cluster.global
   ports:
   - name: http
-    number: 80
+    number: 9080
     protocol: HTTP
   resolution: STATIC
 ---

@@ -108,7 +108,7 @@ func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Re
 			Hosts: []string{rsHostname(rs)},
 			Ports: []*v1alpha3.Port{
 				&v1alpha3.Port{
-					Number:   80,
+					Number:   portClientUses(rs),
 					Protocol: "HTTP",
 					Name:     "http",
 				},
@@ -123,6 +123,12 @@ func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Re
 			},
 		},
 	}
+}
+
+// portClientUses yields the TCP port that clients expect to invoke
+func portClientUses(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) uint32 {
+	// TODO Get from proto
+	return 9080
 }
 
 // serviceToDestinationRuleSNI() creates a DestinationRule setting up MUTUAL (not ISTIO_MUTUAL) TLS
@@ -325,7 +331,7 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 								Subset: notlsSubsetName(es),
 								Port: &v1alpha3.PortSelector{
 									Port: &v1alpha3.PortSelector_Number{
-										Number: 80,
+										Number: portServiceExposes(es),
 									},
 								},
 							},
@@ -335,6 +341,13 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 			},
 		},
 	}, nil
+}
+
+
+// portServiceExposes yields the TCP port the K8s service listens on
+func portServiceExposes(es *v1alpha1.ServiceExpositionPolicy_ExposedService) uint32 {
+	// TODO Get from proto
+	return 9080
 }
 
 func esHostnameSNI(config istiomodel.Config, es *v1alpha1.ServiceExpositionPolicy_ExposedService) string {
