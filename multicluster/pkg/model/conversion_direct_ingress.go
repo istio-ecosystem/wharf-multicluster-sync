@@ -218,9 +218,12 @@ func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_Exposed
 		if es.Subset != "" {
 			origSubset := getSubset(spec, es.Subset)
 			if origSubset == nil {
-				return nil, fmt.Errorf("Exposed subset %q not defined in DestinationRule %s/%s", es.Subset, dr.Namespace, dr.Name)
+				// TODO should we fail or generate a default?
+				// return nil, fmt.Errorf("Exposed subset %q not defined in DestinationRule %s/%s", es.Subset, dr.Namespace, dr.Name)
+				labels = nil
+			} else {
+				labels = origSubset.Labels
 			}
-			labels = origSubset.Labels
 		} else {
 			labels = nil
 		}
