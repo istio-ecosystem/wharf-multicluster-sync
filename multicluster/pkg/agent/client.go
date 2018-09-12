@@ -116,11 +116,51 @@ func (c *Client) update() {
 	}
 
 	// TODO handle updates
-	binding := c.exposedServicesToBinding(exposed, getConnectionMode(c.peer.ID))
-	c.createRemoteServiceBinding(binding)
+	connMode := getConnectionMode(c.peer.ID)
+	binding := c.createRemoteServiceBinding(exposed, connMode)
+	c.addRemoteServiceBinding(binding)
+	if connMode == ConnectionModeLive {
+		c.reconcile(binding)
+	}
 }
 
-func (c *Client) createRemoteServiceBinding(binding *model.Config) {
+// Create a RemoteServiceBinding object for the exposed services
+func (c *Client) createRemoteServiceBinding(exposed *ExposedServices, connectionMode string) *model.Config {
+	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
+	ns := ""
+	for i, service := range exposed.Services {
+		services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
+			Name:      service.Name,
+			Alias:     service.Name,
+			Namespace: service.Namespace,
+		}
+		ns = service.Namespace
+	}
+	name := strings.ToLower(c.peer.ID) + "-services"
+	return &model.Config{
+		ConfigMeta: model.ConfigMeta{
+			Type:      mcmodel.RemoteServiceBinding.Type,
+			Group:     mcmodel.RemoteServiceBinding.Group + model.IstioAPIGroupDomain,
+			Version:   mcmodel.RemoteServiceBinding.Version,
+			Name:      name,
+			Namespace: ns,
+			Labels: map[string]string{
+				ConnectionModeKey: connectionMode,
+			},
+		},
+		Spec: &v1alpha1.RemoteServiceBinding{
+			Remote: []*v1alpha1.RemoteServiceBinding_RemoteCluster{
+				&v1alpha1.RemoteServiceBinding_RemoteCluster{
+					Cluster:  c.peer.ID,
+					Services: services,
+				},
+			},
+		},
+	}
+}
+
+// Add the RemoteServiceBinding to the config store
+func (c *Client) addRemoteServiceBinding(binding *model.Config) {
 	// First use the API server to create the new binding
 	_, err := c.crdClient.Create(*binding)
 	if err != nil {
@@ -131,7 +171,11 @@ func (c *Client) createRemoteServiceBinding(binding *model.Config) {
 
 	// Add it to the config store
 	c.store.Create(*binding)
+}
 
+// Generate the Istio config resources for the RemoteServiceBinding and add
+// them to the config store.
+func (c *Client) reconcile(binding *model.Config) {
 	// Use the reconcile to generate the inferred Istio configs for the new binding
 	added, modified, err := reconcile.AddMulticlusterConfig(c.istioStore, *binding, c.config)
 	if err != nil {
@@ -181,40 +225,6 @@ func (c *Client) needsUpdate(exposed *ExposedServices) bool {
 		}
 	}
 	return true
-}
-
-func (c *Client) exposedServicesToBinding(exposed *ExposedServices, connectionMode string) *model.Config {
-	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
-	ns := ""
-	for i, service := range exposed.Services {
-		services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
-			Name:      service.Name,
-			Alias:     service.Name,
-			Namespace: service.Namespace,
-		}
-		ns = service.Namespace
-	}
-	name := strings.ToLower(c.peer.ID) + "-services"
-	return &model.Config{
-		ConfigMeta: model.ConfigMeta{
-			Type:      mcmodel.RemoteServiceBinding.Type,
-			Group:     mcmodel.RemoteServiceBinding.Group + model.IstioAPIGroupDomain,
-			Version:   mcmodel.RemoteServiceBinding.Version,
-			Name:      name,
-			Namespace: ns,
-			Labels: map[string]string{
-				ConnectionModeKey: connectionMode,
-			},
-		},
-		Spec: &v1alpha1.RemoteServiceBinding{
-			Remote: []*v1alpha1.RemoteServiceBinding_RemoteCluster{
-				&v1alpha1.RemoteServiceBinding_RemoteCluster{
-					Cluster:  c.peer.ID,
-					Services: services,
-				},
-			},
-		},
-	}
 }
 
 // Go through the RemoteServiceBindings in the store and find the one
