@@ -1,7 +1,10 @@
 {
-    "id": "clusterB",
+    "id": "cluster-b",
     "gatewayIP": "127.0.0.1",
     "gatewayPort": 80,
     "agentIP": "localhost",
-    "agentPort": 8999
+    "agentPort": 8999,
+    "trustedPeers": [
+        "cluster-a"
+    ]
 }

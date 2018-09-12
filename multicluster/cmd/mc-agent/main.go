@@ -38,7 +38,7 @@ var (
 
 	mcStore       mcmodel.MCConfigStore
 	istioStore    model.ConfigStore
-	clusterConfig agent.ClusterConfig
+	clusterConfig *agent.ClusterConfig
 )
 
 func main() {
@@ -127,7 +127,7 @@ func main() {
 	go ctl.Run(stopCh)
 
 	log.Debugf("Starting agent listener on port %d..", clusterConfig.AgentPort)
-	server, err := agent.NewServer(clusterConfig.AgentIP, clusterConfig.AgentPort, mcStore)
+	server, err := agent.NewServer(clusterConfig, mcStore)
 	go server.Run()
 
 	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))

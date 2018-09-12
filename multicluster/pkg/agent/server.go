@@ -19,21 +19,23 @@ import (
 type Server struct {
 	httpServer http.Server
 	store      mcmodel.MCConfigStore
+	config     *ClusterConfig
 }
 
 // NewServer will create a new agent server to serve peer request on the
 // specific address:port with information from the provided config store. The
 // server will start listening only when the Run() function is called.
-func NewServer(addr string, port uint16, store mcmodel.MCConfigStore) (*Server, error) {
+func NewServer(config *ClusterConfig, store mcmodel.MCConfigStore) (*Server, error) {
 	router := mux.NewRouter()
 	s := &Server{
 		httpServer: http.Server{
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,
-			Addr:         fmt.Sprintf("%s:%d", addr, port),
+			Addr:         fmt.Sprintf("%s:%d", config.AgentIP, config.AgentPort),
 			Handler:      router,
 		},
-		store: store,
+		store:  store,
+		config: config,
 	}
 	_ = router.NewRoute().PathPrefix("/exposed/{clusterID}").Methods("GET").HandlerFunc(s.handlePoliciesReq)
 
@@ -83,8 +85,12 @@ func (s *Server) handlePoliciesReq(w http.ResponseWriter, req *http.Request) {
 
 // Function checkes whether the provided cluster identity is trusted or not.
 func (s *Server) isTrustedCluster(clusterID string) bool {
-	// TODO read it from auth config
-	return clusterID == "clusterA"
+	for _, trusted := range s.config.TrustedPeers {
+		if trusted == clusterID {
+			return true
+		}
+	}
+	return false
 }
 
 // Search the config store for relevant services that are exposed to the

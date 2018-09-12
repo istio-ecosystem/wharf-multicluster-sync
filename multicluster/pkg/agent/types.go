@@ -32,7 +32,8 @@ type ClusterConfig struct {
 	AgentIP   string `json:"agentIP"`
 	AgentPort uint16 `json:"agentPort"`
 
-	Peers []ClusterConfig `json:"peers,omitempty"`
+	Peers        []ClusterConfig `json:"peers,omitempty"`
+	TrustedPeers []string        `json:"trustedPeers,omitempty"`
 }
 
 // Ip is implementing the model.ClusterInfo interface
