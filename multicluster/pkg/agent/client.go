@@ -104,7 +104,6 @@ func (c *Client) update() {
 			deleted, err := reconcile.DeleteMulticlusterConfig(c.istioStore, *rsb, c.config)
 			if err != nil {
 				log.Errora(err)
-				return
 			}
 			StoreIstioConfigs(c.istioStore, nil, nil, deleted)
 		}

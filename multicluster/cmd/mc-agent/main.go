@@ -90,7 +90,6 @@ func main() {
 			added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
 			if err != nil {
 				log.Errora(err)
-				return
 			}
 			agent.StoreIstioConfigs(istioStore, added, modified, nil)
 		case model.EventDelete:
@@ -99,7 +98,6 @@ func main() {
 			deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
 			if err != nil {
 				log.Errora(err)
-				return
 			}
 			agent.StoreIstioConfigs(istioStore, nil, nil, deleted)
 		case model.EventUpdate:
@@ -108,7 +106,6 @@ func main() {
 			updated, err := reconcile.ModifyMulticlusterConfig(istioStore, config, clusterConfig)
 			if err != nil {
 				log.Errora(err)
-				return
 			}
 			agent.StoreIstioConfigs(istioStore, nil, updated, nil)
 		}
