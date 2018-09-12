@@ -40,7 +40,6 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 		newSpec.Subsets = make([]*v1alpha3.Subset, len(newSpec.Subsets))
 		copy(newSpec.Subsets, spec.Subsets)
 		newDR.Spec = &newSpec
-		newDR.ResourceVersion = "" // Don't tie rule to a specific version
 
 		drs[spec.Host] = &newDR
 	}

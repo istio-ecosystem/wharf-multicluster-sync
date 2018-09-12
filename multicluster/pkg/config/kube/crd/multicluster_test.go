@@ -198,6 +198,10 @@ func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []isti
 			log.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
 			continue
 		}
+
+		// the memory ConfigStore uses the Date as the ResourceVersion making testing difficult
+		config.ResourceVersion = ""
+
 		obj, err := istiocrd.ConvertConfig(schema, config)
 		if err != nil {
 			log.Errorf("Could not decode %v: %v", config.Name, err)
