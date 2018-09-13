@@ -392,6 +392,8 @@ func expositionToVirtualServiceDirectIngress(es *v1alpha1.ServiceExpositionPolic
 
 // portServiceExposes yields the TCP port the K8s service listens on
 func portServiceExposes(es *v1alpha1.ServiceExpositionPolicy_ExposedService) uint32 {
-	// TODO Get from proto
-	return 9080
+	if es.Port == 0 {
+		return 80
+	}
+	return es.Port
 }
