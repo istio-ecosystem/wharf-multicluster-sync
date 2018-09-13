@@ -19,7 +19,7 @@ const (
 
 	// IstioConversionStyleKey names an exported OS environment variable with value DIRECT_INGRESS or EGRESS_INGRESS
 	IstioConversionStyleKey = "MC_STYLE"
-	
+
 	EgressIngressStyle = "EGRESS_INGRESS"
 	DirectIngressStyle = "DIRECT_INGRESS"
 )

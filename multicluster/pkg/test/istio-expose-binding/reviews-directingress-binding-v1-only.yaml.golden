@@ -36,3 +36,18 @@ spec:
       mode: MUTUAL
       privateKey: /etc/certs/key.pem
       sni: reviews-v1.default.svc.cluster.global
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: dummyservice-reviews-default
+  namespace: default
+spec:
+  ports:
+  - port: 9080
+    protocol: TCP
+    targetPort: 0
+  type: ClusterIP

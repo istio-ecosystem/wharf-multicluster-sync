@@ -12,12 +12,31 @@ import (
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 
+	"github.com/golang/protobuf/proto"
+
 	"istio.io/api/networking/v1alpha3"
 	istiomodel "istio.io/istio/pilot/pkg/model"
 
+	kube_v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	multierror "github.com/hashicorp/go-multierror"
+)
+
+var (
+	// Let K8s Service be handled like Istio and Istio-MC objects are.
+	// TODO: Remove?  This is currently only used for YAML serialization for tests
+	// and could be moved there.
+	K8sService = istiomodel.ProtoSchema{
+		Type:        "service",
+		Plural:      "services",
+		Group:       "",
+		Version:     "v1",
+		MessageName: "v1.Service",
+		Validate: func(name, namespace string, config proto.Message) error {
+			return nil
+		},
+	}
 )
 
 // ConvertBindingsAndExposuresDirectIngress converts a list of multicluster SEP and RDS configuration
@@ -50,11 +69,11 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 		var err error
 		rsb, ok := mc.Spec.(*v1alpha1.RemoteServiceBinding)
 		if ok {
-			istio, err = convertRSBSNI(mc, rsb, ci)
+			istio, err = convertRSBDirectIngress(mc, rsb, ci)
 		}
 		sep, ok := mc.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		if ok {
-			istio, err = convertSEPSNI(mc, sep, drs)
+			istio, err = convertSEPDirectIngress(mc, sep, drs)
 		}
 		if err != nil {
 			return out, multierror.Prefix(err, "Could not convert")
@@ -80,13 +99,14 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 	return unique, nil
 }
 
-func convertRSBSNI(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, error) {
+func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range rsb.Remote {
 		for _, svc := range remote.Services {
-			out = append(out, *serviceToServiceEntrySNI(svc, config, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
-			out = append(out, *serviceToDestinationRuleSNI(svc, config))
+			out = append(out, *serviceToServiceEntryDirectIngress(svc, config, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
+			out = append(out, *serviceToDestinationRuleDirectIngress(svc, config))
+			out = append(out, *serviceToKubernetesServiceDirectIngress(svc, config))
 		}
 	}
 
@@ -94,7 +114,7 @@ func convertRSBSNI(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding,
 }
 
 // serviceToServiceEntry() creates a ServiceEntry pointing to istio-egressgateway
-func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, ip string, port uint32) *istiomodel.Config {
+func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, ip string, port uint32) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.ServiceEntry.Type,
@@ -133,8 +153,8 @@ func portClientUses(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServic
 	return rs.Port
 }
 
-// serviceToDestinationRuleSNI() creates a DestinationRule setting up MUTUAL (not ISTIO_MUTUAL) TLS
-func serviceToDestinationRuleSNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
+// serviceToDestinationRuleDirectIngress() creates a DestinationRule setting up MUTUAL (not ISTIO_MUTUAL) TLS
+func serviceToDestinationRuleDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.DestinationRule.Type,
@@ -159,11 +179,36 @@ func serviceToDestinationRuleSNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster
 	}
 }
 
+// serviceToKubernetesServiceDirectIngress() creates a K8s Service so that DNS resolves to something/anything
+func serviceToKubernetesServiceDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
+	return &istiomodel.Config{
+		ConfigMeta: istiomodel.ConfigMeta{
+			Type:        K8sService.Type,
+			Group:       K8sService.Group,
+			Version:     K8sService.Version,
+			Name:        fmt.Sprintf("dummyservice-%s-%s", config.Name, meta_v1.NamespaceDefault), // TODO avoid collisions?
+			Namespace:   config.Namespace,
+			Annotations: annotations(config),
+		},
+		Spec: &kube_v1.ServiceSpec{
+			Type: kube_v1.ServiceTypeClusterIP,
+			Ports: []kube_v1.ServicePort{
+				kube_v1.ServicePort{
+					Protocol: "TCP",
+					Port:     int32(portClientUses(rs)),
+				},
+			},
+			// No selector
+			// ClusterIP will be assigned by the master
+		},
+	}
+}
+
 func rsAliasHostname(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.global", rs.Name, remoteServiceNamespace(rs))
 }
 
-func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config) ([]istiomodel.Config, error) {
+func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range sep.Exposed {
@@ -172,17 +217,17 @@ func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPoli
 			svcname = remote.Name
 		}
 
-		dr, err := expositionToDestinationRuleSNI(remote, config, drs)
+		dr, err := expositionToDestinationRuleDirectIngress(remote, config, drs)
 		if err != nil {
 			return out, err
 		}
 
-		gw, err := expositionToGatewaySNI(remote, config)
+		gw, err := expositionToGatewayDirectIngress(remote, config)
 		if err != nil {
 			return out, err
 		}
 
-		vs, err := expositionToVirtualServiceSNI(remote, config)
+		vs, err := expositionToVirtualServiceDirectIngress(remote, config)
 		if err != nil {
 			return out, err
 		}
@@ -194,7 +239,7 @@ func convertSEPSNI(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPoli
 }
 
 // 'drs' maps hostname to DestinationRule and is used to keep track of destinations exposed with different subset and/or alias
-func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config, drs map[string]*istiomodel.Config) (*istiomodel.Config, error) {
+func expositionToDestinationRuleDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config, drs map[string]*istiomodel.Config) (*istiomodel.Config, error) {
 	hostname := fmt.Sprintf("%s.default.svc.cluster.local", es.Name)
 
 	dr, ok := drs[hostname]
@@ -275,7 +320,7 @@ func getSubset(rule *v1alpha3.DestinationRule, name string) *v1alpha3.Subset {
 	return nil
 }
 
-func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
+func expositionToGatewayDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.Gateway.Type,
@@ -304,8 +349,8 @@ func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService,
 	}, nil
 }
 
-// expositionToVirtualServiceSNI() creates a VirtualService with sniHosts
-func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
+// expositionToVirtualServiceDirectIngress() creates a VirtualService with sniHosts
+func expositionToVirtualServiceDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.VirtualService.Type,
@@ -349,8 +394,4 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 func portServiceExposes(es *v1alpha1.ServiceExpositionPolicy_ExposedService) uint32 {
 	// TODO Get from proto
 	return 9080
-}
-
-func esHostnameSNI(config istiomodel.Config, es *v1alpha1.ServiceExpositionPolicy_ExposedService) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), meta_v1.NamespaceDefault)
 }

@@ -20,9 +20,11 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	multierror "github.com/hashicorp/go-multierror"
+
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // debugClusterInfo simulates the function of K8s Cluster Registry
@@ -33,10 +35,16 @@ type debugClusterInfo struct {
 }
 
 var (
-	// TODO This goes away if we become part of Istio
-	unknownKinds = map[string]istiomodel.ProtoSchema{
-		"ServiceExpositionPolicy": model.ServiceExpositionPolicy,
-		"RemoteServiceBinding":    model.RemoteServiceBinding,
+	nonIstioSchema = map[string]istiomodel.ProtoSchema{
+		"service": mcmodel.K8sService,
+	}
+	nonIstioObject = map[string]istiocrd.IstioObject{
+		"service": &istiocrd.MockConfig{
+			TypeMeta: meta_v1.TypeMeta{
+				Kind:       "Service",
+				APIVersion: "v1",
+			},
+		},
 	}
 )
 
@@ -157,7 +165,7 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 			"cluster2": 80,
 		},
 	}
-	istioConfigs, err := model.ConvertBindingsAndExposuresEgressIngress(configs, ci)
+	istioConfigs, err := mcmodel.ConvertBindingsAndExposuresEgressIngress(configs, ci)
 	if err != nil {
 		return err
 	}
@@ -191,22 +199,53 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 	return nil
 }
 
+func configToIstioObj(descriptor istiomodel.ConfigDescriptor, config istiomodel.Config) (IstioObject, error) {
+	// Does config wrap a non-Istio, non-MC Kubernetes type?
+	schema, exists := nonIstioSchema[config.Type]
+	if exists {
+		spec, err := istiomodel.ToJSONMap(config.Spec)
+		if err != nil {
+			return nil, err
+		}
+		namespace := config.Namespace
+		if namespace == "" {
+			namespace = meta_v1.NamespaceDefault
+		}
+		out := nonIstioObject[config.Type].DeepCopyObject().(IstioObject)
+		out.SetObjectMeta(meta_v1.ObjectMeta{
+			Name:            config.Name,
+			Namespace:       namespace,
+			ResourceVersion: config.ResourceVersion,
+			Labels:          config.Labels,
+			Annotations:     config.Annotations,
+		})
+		out.SetSpec(spec)
+
+		return out, nil
+	}
+
+	// Does config wrap an Istio object?
+	schema, exists = descriptor.GetByType(config.Type)
+	if !exists {
+		return nil, fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
+	}
+
+	// the memory ConfigStore uses the Date as the ResourceVersion making testing nonrepeatable
+	config.ResourceVersion = ""
+
+	// TODO Check for MC model object
+
+	obj, err := istiocrd.ConvertConfig(schema, config)
+	if err != nil {
+		return nil, fmt.Errorf("Could not decode %v: %v", config.Name, err)
+	}
+
+	return obj, nil
+}
+
 func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomodel.Config, writer io.Writer) error {
 	for i, config := range configs {
-		schema, exists := descriptor.GetByType(config.Type)
-		if !exists {
-			log.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
-			continue
-		}
-
-		// the memory ConfigStore uses the Date as the ResourceVersion making testing difficult
-		config.ResourceVersion = ""
-
-		obj, err := istiocrd.ConvertConfig(schema, config)
-		if err != nil {
-			log.Errorf("Could not decode %v: %v", config.Name, err)
-			continue
-		}
+		obj, err := configToIstioObj(descriptor, config)
 		bytes, err := yaml.Marshal(obj)
 		if err != nil {
 			log.Errorf("Could not convert %v to YAML: %v", config, err)

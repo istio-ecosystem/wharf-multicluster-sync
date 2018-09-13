@@ -7,11 +7,12 @@
 package crd
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	multierror "github.com/hashicorp/go-multierror"
 
 	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
 	"istio.io/istio/pilot/pkg/config/memory"
@@ -19,7 +20,7 @@ import (
 
 	"istio.io/istio/pilot/test/util"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 )
 
 func TestBindingToDirectIngressConfiguration(t *testing.T) {
@@ -33,11 +34,11 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 		{in: "rshriram-demo-exposure.yaml",
 			out: "banix-demo-exposure.yaml"},
 		{in: "reviews-binding.yaml",
-			out: "reviews-sni-binding.yaml"},
+			out: "reviews-directingress-binding.yaml"},
 		{in: "reviews-binding-v1-only.yaml",
-			out: "reviews-sni-binding-v1-only.yaml"},
+			out: "reviews-directingress-binding-v1-only.yaml"},
 		{in: "reviews-exposure-both.yaml",
-			out:   "reviews-sni-exposure.yaml",
+			out:   "reviews-directingress-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
 	}
 
@@ -66,7 +67,7 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 				store, _ = createTestConfigStore([]istiomodel.Config{})
 			}
 
-			if err := readAndConvertSNI(in, out, store); err != nil {
+			if err := readAndConvertDirectIngress(in, out, store); err != nil {
 				t.Fatalf("Unexpected error converting configs: %v", err)
 			}
 
@@ -75,8 +76,8 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 	}
 }
 
-// readAndConvertSNI converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.ConfigStore) error {
+// readAndConvertDirectIngress converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
+func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, store istiomodel.ConfigStore) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
@@ -92,7 +93,7 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.Conf
 			"cluster2": 80,
 		},
 	}
-	istioConfigs, err := model.ConvertBindingsAndExposuresDirectIngress(configs, ci, store)
+	istioConfigs, err := mcmodel.ConvertBindingsAndExposuresDirectIngress(configs, ci, store)
 	if err != nil {
 		return err
 	}
@@ -108,18 +109,18 @@ func readAndConvertSNI(reader io.Reader, writer io.Writer, store istiomodel.Conf
 	for _, istioConfig := range istioConfigs {
 		schema, exists := configDescriptor.GetByType(istioConfig.Type)
 		if !exists {
-			return fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(istioConfig.Type), istioConfig.Name)
+			continue // Don't validate generated K8s config (the Service)
 		}
 
 		err = schema.Validate(istioConfig.Name, istioConfig.Namespace, istioConfig.Spec)
 		if err != nil {
-			return err
+			return multierror.Prefix(err, "validation failure")
 		}
 	}
 
 	err = writeIstioYAMLOutput(configDescriptor, istioConfigs, writer)
 	if err != nil {
-		return err
+		return multierror.Prefix(err, "couldn't write yaml")
 	}
 
 	return nil
