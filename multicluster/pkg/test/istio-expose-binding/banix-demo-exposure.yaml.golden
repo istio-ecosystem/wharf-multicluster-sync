@@ -55,5 +55,5 @@ spec:
     - destination:
         host: server.default.svc.cluster.local
         port:
-          number: 9080
+          number: 80
         subset: notls

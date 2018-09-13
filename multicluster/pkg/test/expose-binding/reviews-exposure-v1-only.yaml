@@ -6,6 +6,7 @@ metadata:
 spec:
   exposed:
   - name: reviews
+    port: 9080
     alias: reviews-v1
     subset: v1
     clusters:
