@@ -26,7 +26,6 @@ import (
 	"log"
 	"text/template"
 
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 	"istio.io/istio/pilot/pkg/model"
 )
@@ -61,7 +60,7 @@ func main() {
 
 	// Prepare to generate types for mock schema and all schema listed in model.IstioConfigTypes
 	typeList := []ConfigData{}
-	for _, schema := range mcmodel.IstioConfigTypes {
+	for _, schema := range model.IstioConfigTypes {
 		typeList = append(typeList, MakeConfigData(schema))
 	}
 	var buffer bytes.Buffer
