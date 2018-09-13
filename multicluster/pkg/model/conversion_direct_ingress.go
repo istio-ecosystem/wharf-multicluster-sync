@@ -347,8 +347,10 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 
 // portServiceExposes yields the TCP port the K8s service listens on
 func portServiceExposes(es *v1alpha1.ServiceExpositionPolicy_ExposedService) uint32 {
-	// TODO Get from proto
-	return 9080
+	if es.Port == 0 {
+		return 80
+	}
+	return es.Port
 }
 
 func esHostnameSNI(config istiomodel.Config, es *v1alpha1.ServiceExpositionPolicy_ExposedService) string {
