@@ -39,8 +39,10 @@ func TestServiceToBinding(t *testing.T) {
 			out: "rshriram-demo-exposure.yaml"},
 		{in: "reviews-exposure-both.yaml",
 			out: "reviews-exposure.yaml"},
-		{in: "ratings-exposure.yaml",
-			out: "ratings-exposure.yaml"},
+		// Commenting this one because no service is exposed therefore
+		// no RSB is generated
+		// {in: "ratings-exposure.yaml",
+		// 	out: "ratings-exposure.yaml"},
 	}
 
 	clusterConfig, err := loadConfig("../test/mc-agent/cluster_a.json")
@@ -95,9 +97,8 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *ClusterCo
 	var config ClusterConfig
 	var peer ClusterConfig
 	var istioStore istiomodel.ConfigStore
-	var crdClient crd.Client
 	_ = configs
-	client, err := NewClient(&config, &peer, &crdClient, &store, istioStore)
+	client, err := NewClient(&config, &peer, &store, istioStore)
 	if err != nil {
 		return err
 	}

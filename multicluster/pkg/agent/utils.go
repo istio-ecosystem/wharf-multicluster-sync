@@ -36,7 +36,7 @@ func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []
 				log.Warnf("\tType:%s\tName: %s.%s [Error: %v]", cfg.Type, cfg.Name, cfg.Namespace, err)
 				continue
 			}
-			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
+			log.Debugf("\tType:%s\tName: %s.%s [Updated]", cfg.Type, cfg.Name, cfg.Namespace)
 		}
 	}
 	if len(create) > 0 {
@@ -47,7 +47,7 @@ func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []
 				log.Warnf("\tType:%s\tName: %s.%s [Error: %v]", cfg.Type, cfg.Name, cfg.Namespace, err)
 				continue
 			}
-			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
+			log.Debugf("\tType:%s\tName: %s.%s [Created]", cfg.Type, cfg.Name, cfg.Namespace)
 		}
 	}
 	if len(delete) > 0 {
@@ -58,7 +58,7 @@ func StoreIstioConfigs(store model.ConfigStore, create []model.Config, update []
 				log.Warnf("\tType:%s\tName: %s.%s [Error: %v]", cfg.Type, cfg.Name, cfg.Namespace, err)
 				continue
 			}
-			log.Debugf("\tType:%s\tName: %s.%s [Success]", cfg.Type, cfg.Name, cfg.Namespace)
+			log.Debugf("\tType:%s\tName: %s.%s [Deleted]", cfg.Type, cfg.Name, cfg.Namespace)
 		}
 	}
 }

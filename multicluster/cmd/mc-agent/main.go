@@ -82,6 +82,7 @@ func main() {
 	ctl := mccrd.NewController(cl, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
 
 	// Register model configs event handler that will update the config store accordingly
+	// for ServiceExpositionPolicy resources
 	ctl.RegisterEventHandler(mcmodel.ServiceExpositionPolicy.Type, func(config model.Config, ev model.Event) {
 		switch ev {
 		case model.EventAdd:
@@ -133,7 +134,7 @@ func main() {
 	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))
 	clients := []*agent.Client{}
 	for _, peer := range clusterConfig.Peers {
-		client, err := agent.NewClient(clusterConfig, &peer, cl, &mcStore, istioStore)
+		client, err := agent.NewClient(clusterConfig, &peer, &mcStore, istioStore)
 		if err != nil {
 			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
 			continue

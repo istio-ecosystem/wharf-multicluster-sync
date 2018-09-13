@@ -10,8 +10,6 @@ import (
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
-
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 	"istio.io/istio/pilot/pkg/model"
@@ -29,7 +27,6 @@ const (
 type Client struct {
 	config       *ClusterConfig
 	peer         *ClusterConfig
-	crdClient    *crd.Client
 	pollInterval time.Duration
 
 	store      mcmodel.MCConfigStore
@@ -39,11 +36,10 @@ type Client struct {
 // NewClient will create a new agent client that connects to a peered server on
 // the specified address:port and fetch current exposition policies. The client
 // will start polling only when the Run() function is called.
-func NewClient(config *ClusterConfig, peer *ClusterConfig, client *crd.Client, store *mcmodel.MCConfigStore, istioStore model.ConfigStore) (*Client, error) {
+func NewClient(config *ClusterConfig, peer *ClusterConfig, store *mcmodel.MCConfigStore, istioStore model.ConfigStore) (*Client, error) {
 	c := &Client{
 		config:       config,
 		peer:         peer,
-		crdClient:    client,
 		pollInterval: pollInterval,
 		store:        *store,
 		istioStore:   istioStore,
@@ -80,52 +76,70 @@ func (c *Client) update() {
 		return
 	}
 
+	// Get the connection mode for the peer. Can either be live or potential.
+	// In live mode the Istio Configs will be created and deleted.
+	connMode := getConnectionMode(c.peer.ID)
+
 	// If returned query response is 0 exposed services it can either be that
 	// all exposed services were removed or there weren't any in the first
 	// place.
-	if len(exposed.Services) == 0 {
-		// If all previously exposed services were removed we cleanup all
-		// related Istio configs and the relevant RemoteServiceBinding
-		if rsb := c.remoteServiceBinding(); rsb != nil {
-			log.Debugf("Peer [%s] removed all exposed services", c.peer.ID)
-			// First use the API server to create the new binding
-			err := c.crdClient.Delete(rsb.Type, rsb.Name, rsb.Namespace)
-			if err != nil {
-				log.Errora(err)
-			}
-			// Peer removed all exposed services therefore no need for the RSB
-			c.store.Delete(rsb.Type, rsb.Name, rsb.Namespace)
-			if err != nil {
-				log.Errora(err)
-			}
-			log.Debugf("RemoteServiceBinding deleted for cluser [%s] deleted", c.peer.ID)
+	// if len(exposed.Services) == 0 {
+	// 	// If all previously exposed services were removed we cleanup all
+	// 	// related Istio configs and the relevant RemoteServiceBinding
+	// 	if rsb := c.remoteServiceBinding(); rsb != nil {
+	// 		log.Debugf("Peer [%s] removed all exposed services", c.peer.ID)
 
-			// Use the reconcile to generate the inferred Istio configs for the new binding
-			deleted, err := reconcile.DeleteMulticlusterConfig(c.istioStore, *rsb, c.config)
-			if err != nil {
-				log.Errora(err)
-			}
-			StoreIstioConfigs(c.istioStore, nil, nil, deleted)
-		}
-		return
-	}
+	// 		// Peer removed all exposed services therefore no need for the RSB
+	// 		c.store.Delete(rsb.Type, rsb.Name, rsb.Namespace)
+	// 		if err != nil {
+	// 			log.Errora(err)
+	// 		}
+	// 		log.Debugf("RemoteServiceBinding for cluser [%s] deleted", c.peer.ID)
 
+	// 		// Delete Istio configs if in live mode
+	// 		if connMode == ConnectionModeLive {
+	// 			c.reconcile(nil, rsb)
+	// 		}
+	// 	}
+	// 	return
+	// }
+
+	// TODO: currently just checking if something has changed by comparing the number of services.
+	// This needs to be revisited to compare existing and incoming services and figure what are
+	// the added, updated and deleted services.
 	if !c.needsUpdate(exposed) {
 		// Nothing changed on peered cluster since last check
 		return
 	}
 
-	// TODO handle updates
-	connMode := getConnectionMode(c.peer.ID)
-	binding := c.createRemoteServiceBinding(exposed, connMode)
-	c.addRemoteServiceBinding(binding)
+	// TODO: Below is an unefficient implemntation to handle update which first delete the RSB
+	// and its Istio configs and then create new ones with the updated info.
+
+	//oldRsb, exists := c.store.Get(mcmodel.RemoteServiceBinding.Type, rsbName, newRsb.Namespace)
+	oldRsb := c.remoteServiceBinding()
+	if oldRsb != nil {
+		c.store.Delete(mcmodel.RemoteServiceBinding.Type, oldRsb.Name, oldRsb.Namespace)
+		log.Debug("Old RemoteServiceBinding deleted for the exposed remote service(s)")
+	}
+
+	newRsb := c.createRemoteServiceBinding(exposed, connMode)
+	if newRsb != nil {
+		// Add it to the config store
+		c.store.Create(*newRsb)
+		log.Debug("RemoteServiceBinding created for the exposed remote service(s)")
+	}
+
+	// Reconcile Istio configs if in live mode
 	if connMode == ConnectionModeLive {
-		c.reconcile(binding)
+		c.reconcile(newRsb, oldRsb)
 	}
 }
 
 // Create a RemoteServiceBinding object for the exposed services
 func (c *Client) createRemoteServiceBinding(exposed *ExposedServices, connectionMode string) *model.Config {
+	if exposed == nil || len(exposed.Services) == 0 {
+		return nil
+	}
 	services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(exposed.Services))
 	ns := ""
 	for i, service := range exposed.Services {
@@ -160,30 +174,27 @@ func (c *Client) createRemoteServiceBinding(exposed *ExposedServices, connection
 	}
 }
 
-// Add the RemoteServiceBinding to the config store
-func (c *Client) addRemoteServiceBinding(binding *model.Config) {
-	// First use the API server to create the new binding
-	_, err := c.crdClient.Create(*binding)
-	if err != nil {
-		log.Errora(err)
-		return
+// Reconcile will first delete all the reconciled Istio configs for the 'delete'
+// MC config and then add/modify Istio configs for the 'add' MC config
+func (c *Client) reconcile(add *model.Config, delete *model.Config) {
+	if delete != nil {
+		// Use the reconcile to generate the inferred Istio configs for the deleted binding
+		deleted, err := reconcile.DeleteMulticlusterConfig(c.istioStore, *delete, c.config)
+		if err != nil {
+			log.Errora(err)
+		}
+		StoreIstioConfigs(c.istioStore, nil, nil, deleted)
 	}
-	log.Debug("RemoteServiceBinding created for the exposed remote service(s)")
 
-	// Add it to the config store
-	c.store.Create(*binding)
-}
-
-// Generate the Istio config resources for the RemoteServiceBinding and add
-// them to the config store.
-func (c *Client) reconcile(binding *model.Config) {
-	// Use the reconcile to generate the inferred Istio configs for the new binding
-	added, modified, err := reconcile.AddMulticlusterConfig(c.istioStore, *binding, c.config)
-	if err != nil {
-		log.Errora(err)
-		return
+	if add != nil {
+		// Use the reconcile to generate the inferred Istio configs for the added binding
+		added, modified, err := reconcile.AddMulticlusterConfig(c.istioStore, *add, c.config)
+		if err != nil {
+			log.Errora(err)
+			return
+		}
+		StoreIstioConfigs(c.istioStore, added, modified, nil)
 	}
-	StoreIstioConfigs(c.istioStore, added, modified, nil)
 }
 
 // Function will call the peer of this client and fetch the current state of
