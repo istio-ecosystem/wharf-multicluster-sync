@@ -108,6 +108,7 @@ func (s *Server) exposedServices(clusterID string) []*ExposedService {
 				results = append(results, &ExposedService{
 					Name:      exposedName,
 					Namespace: policy.Namespace,
+					Port:      exposed.Port,
 				})
 			}
 		}

@@ -9,3 +9,4 @@ spec:
     services:
     - name: server
       namespace: ns2 # Remote namespace needed
+      port: 9080

@@ -27,6 +27,7 @@ option go_package = "github.ibm.com/istio-research/multicluster-roadmap/api/mult
 //     - name: FooA
 //       alias: remoteFooA
 //       namespace: istio-remote
+//       port: 9080
 //   - cluster: clusterD
 //     services:
 //     - name: FooB
@@ -56,7 +57,10 @@ message RemoteServiceBinding {
 
       // A destination namespace where the binded service will be added to.
       string namespace = 3;
-
+      
+      // The port of the exposed service.
+      // TODO: consider adding support for multiple ports, their types and names.
+      uint32 port = 4;
     };
         
     // A list of remote service from the donor cluster to be binded into local

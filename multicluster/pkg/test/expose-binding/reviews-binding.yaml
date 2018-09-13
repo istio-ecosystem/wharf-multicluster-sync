@@ -8,3 +8,4 @@ spec:
   - cluster: cluster2
     services:
     - name: reviews
+      port: 9080

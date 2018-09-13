@@ -18,7 +18,7 @@ type ExposedServices struct {
 type ExposedService struct {
 	Name      string
 	Namespace string
-	Port      uint16
+	Port      uint32
 }
 
 // ClusterConfig holds all the configuration information about the local

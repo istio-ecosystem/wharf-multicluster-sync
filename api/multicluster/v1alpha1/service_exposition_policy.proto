@@ -28,6 +28,7 @@ option go_package = "github.ibm.com/istio-research/multicluster-roadmap/api/mult
 //   - name: ServiceA
 //     alias: FooA
 //     subset: v1
+//     port: 9080
 //     clusters:
 //     - clusterA
 //     - clusterB
@@ -55,9 +56,13 @@ message ServiceExpositionPolicy {
     //  must be defined in a corresponding DestinationRule.
     string subset = 3;
 
+    // The port of the exposed service.
+    // TODO: consider adding support for multiple ports, their types and names.
+    uint32 port = 4;
+
     // A list of cluster IDs that are allowed to call the service exposed by
     // this cluster.
-    repeated string clusters = 4;
+    repeated string clusters = 5;
 
   };
 

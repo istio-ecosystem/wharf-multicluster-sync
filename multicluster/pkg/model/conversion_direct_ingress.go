@@ -33,7 +33,7 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 	}
 	for _, dr := range drConfigs {
 		spec := dr.Spec.(*v1alpha3.DestinationRule)
-		
+
 		// Deep copy some of DR so we don't modify the original while merging for subsets
 		newDR := dr
 		newSpec := *spec
@@ -127,8 +127,10 @@ func serviceToServiceEntrySNI(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Re
 
 // portClientUses yields the TCP port that clients expect to invoke
 func portClientUses(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) uint32 {
-	// TODO Get from proto
-	return 9080
+	if rs.Port == 0 {
+		return 80
+	}
+	return rs.Port
 }
 
 // serviceToDestinationRuleSNI() creates a DestinationRule setting up MUTUAL (not ISTIO_MUTUAL) TLS
@@ -246,7 +248,7 @@ func expositionToDestinationRuleSNI(es *v1alpha1.ServiceExpositionPolicy_Exposed
 
 	// Ensure the subsets are sorted (not needed for Istio, needed for go tests)
 	sort.Slice(spec.Subsets, func(i, j int) bool {
-	    return spec.Subsets[i].Name < spec.Subsets[j].Name
+		return spec.Subsets[i].Name < spec.Subsets[j].Name
 	})
 
 	// Add the dr to the store so that if another ServiceExpositionPolicy refers to the same
@@ -276,11 +278,11 @@ func getSubset(rule *v1alpha3.DestinationRule, name string) *v1alpha3.Subset {
 func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:    istiomodel.Gateway.Type,
-			Group:   istiomodel.Gateway.Group + istiomodel.IstioAPIGroupDomain,
-			Version: istiomodel.Gateway.Version,
-			Name:    exposedServiceGatewayName(es, config),
-			Namespace:   meta_v1.NamespaceDefault,	// TODO config.Namespace?
+			Type:        istiomodel.Gateway.Type,
+			Group:       istiomodel.Gateway.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.Gateway.Version,
+			Name:        exposedServiceGatewayName(es, config),
+			Namespace:   meta_v1.NamespaceDefault, // TODO config.Namespace?
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.Gateway{
@@ -306,11 +308,11 @@ func expositionToGatewaySNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService,
 func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
-			Type:    istiomodel.VirtualService.Type,
-			Group:   istiomodel.VirtualService.Group + istiomodel.IstioAPIGroupDomain,
-			Version: istiomodel.VirtualService.Version,
-			Name:    fmt.Sprintf("ingressgateway-to-%s-%s", exposedServiceName(es), getNamespace(config)),
-			Namespace:   meta_v1.NamespaceDefault,	// TODO config.Namespace?
+			Type:        istiomodel.VirtualService.Type,
+			Group:       istiomodel.VirtualService.Group + istiomodel.IstioAPIGroupDomain,
+			Version:     istiomodel.VirtualService.Version,
+			Name:        fmt.Sprintf("ingressgateway-to-%s-%s", exposedServiceName(es), getNamespace(config)),
+			Namespace:   meta_v1.NamespaceDefault, // TODO config.Namespace?
 			Annotations: annotations(config),
 		},
 		Spec: &v1alpha3.VirtualService{
@@ -342,7 +344,6 @@ func expositionToVirtualServiceSNI(es *v1alpha1.ServiceExpositionPolicy_ExposedS
 		},
 	}, nil
 }
-
 
 // portServiceExposes yields the TCP port the K8s service listens on
 func portServiceExposes(es *v1alpha1.ServiceExpositionPolicy_ExposedService) uint32 {

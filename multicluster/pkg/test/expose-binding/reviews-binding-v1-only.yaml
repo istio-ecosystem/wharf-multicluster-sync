@@ -9,3 +9,4 @@ spec:
     services:
     - name: reviews-v1
       alias: reviews
+      port: 9080

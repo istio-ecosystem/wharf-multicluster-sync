@@ -133,6 +133,7 @@ func (c *Client) createRemoteServiceBinding(exposed *ExposedServices, connection
 			Name:      service.Name,
 			Alias:     service.Name,
 			Namespace: service.Namespace,
+			Port:      service.Port,
 		}
 		ns = service.Namespace
 	}

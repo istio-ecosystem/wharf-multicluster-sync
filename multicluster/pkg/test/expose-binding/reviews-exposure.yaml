@@ -6,3 +6,4 @@ metadata:
 spec:
   exposed:
   - name: reviews
+    port: 9080
