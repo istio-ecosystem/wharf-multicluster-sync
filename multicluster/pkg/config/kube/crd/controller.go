@@ -163,17 +163,6 @@ func (c *controller) RegisterEventHandler(typ string, f func(model.Config, model
 	})
 }
 
-func (c *controller) RegisterUpdatesHandler(typ string, f func(oldObj, newObj interface{})) {
-	_, exists := c.ConfigDescriptor().GetByType(typ)
-	if !exists {
-		return
-	}
-	c.kinds[typ].informer.AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			UpdateFunc: f,
-		})
-}
-
 func (c *controller) HasSynced() bool {
 	for kind, ctl := range c.kinds {
 		if !ctl.informer.HasSynced() {
