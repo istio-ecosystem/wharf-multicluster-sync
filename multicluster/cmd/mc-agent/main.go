@@ -39,6 +39,8 @@ var (
 	mcStore       mcmodel.MCConfigStore
 	istioStore    model.ConfigStore
 	clusterConfig *agent.ClusterConfig
+
+	bindingsConnMode = map[string]string{}
 )
 
 func main() {
@@ -111,6 +113,43 @@ func main() {
 			agent.StoreIstioConfigs(istioStore, nil, updated, nil)
 		}
 		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(mcStore.ServiceExpositionPolicies()))
+	})
+
+	// Register model configs event handler that will update the config store accordingly
+	// for RemoteServiceBinding resources
+	ctl.RegisterEventHandler(mcmodel.RemoteServiceBinding.Type, func(config model.Config, ev model.Event) {
+		configKey := fmt.Sprintf("%s.%s", config.Namespace, config.Name)
+		connMode := config.Labels[agent.ConnectionModeKey]
+		switch ev {
+		case model.EventAdd:
+			log.Debugf("RemoteServiceBinding resource was added. Key: %s", configKey)
+			bindingsConnMode[configKey] = connMode
+		case model.EventDelete:
+			log.Debugf("RemoteServiceBinding resource was deleted. Key: %s", configKey)
+			bindingsConnMode[configKey] = ""
+		case model.EventUpdate:
+			log.Debugf("RemoteServiceBinding resource was updated. Key: %s", configKey)
+			if connMode != bindingsConnMode[configKey] {
+				log.Debugf("Connection mode switched to: %s", connMode)
+				//Mode changed
+				switch connMode {
+				case agent.ConnectionModeLive:
+					added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
+					if err != nil {
+						log.Errora(err)
+					}
+					agent.StoreIstioConfigs(istioStore, added, modified, nil)
+				case agent.ConnectionModePotential:
+					deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
+					if err != nil {
+						log.Errora(err)
+					}
+					agent.StoreIstioConfigs(istioStore, nil, nil, deleted)
+				}
+				bindingsConnMode[configKey] = connMode
+			}
+		}
+		log.Debugf("Config store now has %d RemoteServiceBinding entries", len(mcStore.RemoteServiceBindings()))
 	})
 
 	// Set up a store wrapper for the Multi-Cluster controller
