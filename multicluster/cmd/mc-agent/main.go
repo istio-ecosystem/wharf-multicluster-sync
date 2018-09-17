@@ -1,6 +1,9 @@
 package main
 
 import (
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -204,6 +207,20 @@ func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
 	ctl := crd.NewController(configClient, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
 
 	return ctl, nil
+}
+
+func makeK8sServicesClient() (corev1.ServiceInterface, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset.CoreV1().Services(""), nil
 }
 
 // loadConfig will load the cluster configuration from the provided JSON file
