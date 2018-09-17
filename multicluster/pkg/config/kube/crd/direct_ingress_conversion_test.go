@@ -7,6 +7,7 @@
 package crd
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,12 +22,17 @@ import (
 	"istio.io/istio/pilot/test/util"
 
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+
+	kube_v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
 func TestBindingToDirectIngressConfiguration(t *testing.T) {
 	tt := []struct {
 		in    string // Filename of SEP and RSBs
 		store string // Filename for baseline Istio configuration for merging
+		svcStore string // Filename for baseline Kuberentes services configuration for merging
 		out   string // Filename for generated Istio configuration
 	}{
 		{in: "rshriram-demo-binding.yaml",
@@ -67,7 +73,17 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 				store, _ = createTestConfigStore([]istiomodel.Config{})
 			}
 
-			if err := readAndConvertDirectIngress(in, out, store); err != nil {
+			var svcStore []kube_v1.Service
+			if tc.svcStore != "" {
+				svcStore, err = createTestServiceStoreFromFile("../../../test/expose-binding/" + tc.svcStore)
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				svcStore = make([]kube_v1.Service, 0)
+			}
+
+			if err := readAndConvertDirectIngress(in, out, store, svcStore); err != nil {
 				t.Fatalf("Unexpected error converting configs: %v", err)
 			}
 
@@ -77,7 +93,7 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 }
 
 // readAndConvertDirectIngress converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, store istiomodel.ConfigStore) error {
+func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, store istiomodel.ConfigStore, svcStore []kube_v1.Service) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
@@ -93,7 +109,7 @@ func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, store istio
 			"cluster2": 80,
 		},
 	}
-	istioConfigs, err := mcmodel.ConvertBindingsAndExposuresDirectIngress(configs, ci, store)
+	istioConfigs, svcs, err := mcmodel.ConvertBindingsAndExposuresDirectIngress(configs, ci, store, svcStore)
 	if err != nil {
 		return err
 	}
@@ -123,6 +139,14 @@ func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, store istio
 		return multierror.Prefix(err, "couldn't write yaml")
 	}
 
+	if len(svcs) > 0 {
+		writer.Write([]byte("---\n")) // nolint: errcheck
+		err = writeK8sYAMLOutput(svcs, writer)
+		if err != nil {
+			return multierror.Prefix(err, "couldn't write yaml")
+		}
+	}
+
 	return nil
 }
 
@@ -143,6 +167,25 @@ func createTestConfigStoreFromFile(fname string) (istiomodel.ConfigStore, error)
 	}
 
 	return createTestConfigStore(configs)
+}
+
+func createTestServiceStoreFromFile(fname string) ([]kube_v1.Service, error) {
+	svcs := []kube_v1.Service{}
+
+	if fname != "" {
+		reader, err := os.Open(fname)
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close() // nolint: errcheck
+
+		svcs, err = readK8sServices(reader)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return svcs, nil
 }
 
 func createTestConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore, error) {
@@ -169,4 +212,32 @@ func readIstioConfigs(reader io.Reader) ([]istiomodel.Config, error) {
 	}
 
 	return config, nil
+}
+
+func readK8sServices(reader io.Reader) ([]kube_v1.Service, error) {
+	outSvcs := make([]kube_v1.Service, 0)
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	runtimeScheme := runtime.NewScheme()
+	codecs := serializer.NewCodecFactory(runtimeScheme)
+	deserializer := codecs.UniversalDeserializer()
+	obj, _, err := deserializer.Decode(data, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// now use switch over the type of the object
+	// and match each type-case
+	switch o := obj.(type) {
+	case *kube_v1.Service:
+		outSvcs = append(outSvcs, *o)
+	default:
+		fmt.Printf("Unexpected Kubernetes type %v\n", o)
+	}
+
+	return outSvcs, nil
 }

@@ -10,6 +10,8 @@ import (
 	"os"
 
 	istiomodel "istio.io/istio/pilot/pkg/model"
+
+	kube_v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -31,9 +33,21 @@ type ClusterInfo interface {
 
 func ConvertBindingsAndExposures(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore) ([]istiomodel.Config, error) {
 	if os.Getenv(IstioConversionStyleKey) == DirectIngressStyle {
-		return ConvertBindingsAndExposuresDirectIngress(mcs, ci, store)
+		istioConfig, k8sConfig, err := ConvertBindingsAndExposuresDirectIngress(mcs, ci, store, []kube_v1.Service{})
+		_ = k8sConfig
+		return istioConfig, err
 	}
 
 	// Default
 	return ConvertBindingsAndExposuresEgressIngress(mcs, ci)
+}
+
+func ConvertBindingsAndExposures2(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service) ([]istiomodel.Config, []kube_v1.Service, error) {
+	if os.Getenv(IstioConversionStyleKey) == DirectIngressStyle {
+		return ConvertBindingsAndExposuresDirectIngress(mcs, ci, store, svcs)
+	}
+
+	// Default
+	istioConfig, err := ConvertBindingsAndExposuresEgressIngress(mcs, ci)
+	return istioConfig, []kube_v1.Service{}, err
 }

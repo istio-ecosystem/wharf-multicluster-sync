@@ -43,11 +43,12 @@ metadata:
   annotations:
     multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
-  name: dummyservice-server-rsb-default
-  namespace: default
+  name: server
 spec:
   ports:
   - port: 9080
     protocol: TCP
     targetPort: 0
   type: ClusterIP
+status:
+  loadBalancer: {}

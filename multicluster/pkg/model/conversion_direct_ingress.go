@@ -12,8 +12,6 @@ import (
 
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 
-	"github.com/golang/protobuf/proto"
-
 	"istio.io/api/networking/v1alpha3"
 	istiomodel "istio.io/istio/pilot/pkg/model"
 
@@ -23,32 +21,17 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-var (
-	// Let K8s Service be handled like Istio and Istio-MC objects are.
-	// TODO: Remove?  This is currently only used for YAML serialization for tests
-	// and could be moved there.
-	K8sService = istiomodel.ProtoSchema{
-		Type:        "service",
-		Plural:      "services",
-		Group:       "",
-		Version:     "v1",
-		MessageName: "v1.Service",
-		Validate: func(name, namespace string, config proto.Message) error {
-			return nil
-		},
-	}
-)
-
 // ConvertBindingsAndExposuresDirectIngress converts a list of multicluster SEP and RDS configuration
 // into Istio configuration.  It may consult existing Istio configuration in 'store' (e.g. DestinationRule subsets)
-func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore) ([]istiomodel.Config, error) {
+func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service) ([]istiomodel.Config, []kube_v1.Service, error) {
 	out := make([]istiomodel.Config, 0)
+	outServices := make([]kube_v1.Service, 0)
 
 	// Construct map of hostname -> DestinationRule
 	drs := make(map[string]*istiomodel.Config)
 	drConfigs, err := store.List(istiomodel.DestinationRule.Type, meta_v1.NamespaceDefault)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, dr := range drConfigs {
 		spec := dr.Spec.(*v1alpha3.DestinationRule)
@@ -66,26 +49,32 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 	// Process each Multicluster Config SEP or RSB
 	for _, mc := range mcs {
 		var istio []istiomodel.Config
+		var svcs []kube_v1.Service
 		var err error
 		rsb, ok := mc.Spec.(*v1alpha1.RemoteServiceBinding)
 		if ok {
-			istio, err = convertRSBDirectIngress(mc, rsb, ci)
+			istio, svcs, err = convertRSBDirectIngress(mc, rsb, ci)
 		}
 		sep, ok := mc.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		if ok {
 			istio, err = convertSEPDirectIngress(mc, sep, drs)
 		}
 		if err != nil {
-			return out, multierror.Prefix(err, "Could not convert")
+			return out, outServices, multierror.Prefix(err, "Could not convert")
 		}
 		out = append(out, istio...)
+		outServices = append(outServices, svcs...)
 	}
 
-	// Remove duplicates (e.g. DRs for the same host exposed under different aliases),
-	// favoring duplicates later in the sequence.
+	return uniquifyIstio(out), uniquifyServices(outServices), nil
+}
+
+// uniqueifyIstio removes duplicates (e.g. DRs for the same host exposed under different aliases),
+// favoring duplicates later in the sequence.
+func uniquifyIstio(configs []istiomodel.Config) ([]istiomodel.Config) {
 	unique := make([]istiomodel.Config, 0)
 	names := make(map[string]int) // map of type+namespace+name -> position
-	for _, config := range out {
+	for _, config := range configs {
 		key := fmt.Sprintf("%s+%s+%s", config.Type, config.Namespace, config.Name)
 		pos, ok := names[key]
 		if ok {
@@ -95,22 +84,28 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 			unique = append(unique, config)
 		}
 	}
-
-	return unique, nil
+	
+	return unique
 }
 
-func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, error) {
+// uniqueifyServices TODO merge configs that will conflict when presented to Kubernetes
+func uniquifyServices(configs []kube_v1.Service) ([]kube_v1.Service) {
+	return configs
+}
+
+func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, []kube_v1.Service, error) {
 	out := make([]istiomodel.Config, 0)
+	outSvcs := make([]kube_v1.Service, 0)
 
 	for _, remote := range rsb.Remote {
 		for _, svc := range remote.Services {
 			out = append(out, *serviceToServiceEntryDirectIngress(svc, config, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
 			out = append(out, *serviceToDestinationRuleDirectIngress(svc, config))
-			out = append(out, *serviceToKubernetesServiceDirectIngress(svc, config))
+			outSvcs = append(outSvcs, *serviceToKubernetesServiceDirectIngress(svc, config))
 		}
 	}
 
-	return out, nil
+	return out, outSvcs, nil
 }
 
 // serviceToServiceEntry() creates a ServiceEntry pointing to istio-egressgateway
@@ -180,17 +175,18 @@ func serviceToDestinationRuleDirectIngress(rs *v1alpha1.RemoteServiceBinding_Rem
 }
 
 // serviceToKubernetesServiceDirectIngress() creates a K8s Service so that DNS resolves to something/anything
-func serviceToKubernetesServiceDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
-	return &istiomodel.Config{
-		ConfigMeta: istiomodel.ConfigMeta{
-			Type:        K8sService.Type,
-			Group:       K8sService.Group,
-			Version:     K8sService.Version,
-			Name:        fmt.Sprintf("dummyservice-%s-%s", config.Name, meta_v1.NamespaceDefault), // TODO avoid collisions?
+func serviceToKubernetesServiceDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *kube_v1.Service {
+	return &kube_v1.Service{
+		TypeMeta: meta_v1.TypeMeta{
+			Kind:        "Service",
+			APIVersion:     "v1",
+		},
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:        remoteServiceName(rs),
 			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
-		Spec: &kube_v1.ServiceSpec{
+		Spec: kube_v1.ServiceSpec{
 			Type: kube_v1.ServiceTypeClusterIP,
 			Ports: []kube_v1.ServicePort{
 				kube_v1.ServicePort{

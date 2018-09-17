@@ -24,6 +24,7 @@ import (
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
+	"istio.io/istio/pilot/pkg/config/memory"
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
@@ -89,8 +90,10 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-
-	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci)
+ 
+	store, _ := createTestConfigStore([]istiomodel.Config{})
+ 
+	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci, store)
 	if err != nil {
 		return err
 	}
@@ -122,7 +125,9 @@ func convertToGo(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
-	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci)
+	store, _ := createTestConfigStore([]istiomodel.Config{})
+
+	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci, store)
 	if err != nil {
 		return err
 	}
@@ -222,4 +227,15 @@ func (ci staticClusterInfo) Port(name string) uint32 {
 		return out
 	}
 	return 8080 // dummy value for unknown clusters
+}
+
+func createTestConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore, error) {
+	out := memory.Make(istiomodel.IstioConfigTypes)
+	for _, config := range configs {
+		_, err := out.Create(config)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }

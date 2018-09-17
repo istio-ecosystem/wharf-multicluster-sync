@@ -24,7 +24,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_v1 "k8s.io/api/core/v1"
 )
 
 // debugClusterInfo simulates the function of K8s Cluster Registry
@@ -33,20 +33,6 @@ type debugClusterInfo struct {
 	ips   map[string]string
 	ports map[string]uint32
 }
-
-var (
-	nonIstioSchema = map[string]istiomodel.ProtoSchema{
-		"service": mcmodel.K8sService,
-	}
-	nonIstioObject = map[string]istiocrd.IstioObject{
-		"service": &istiocrd.MockConfig{
-			TypeMeta: meta_v1.TypeMeta{
-				Kind:       "Service",
-				APIVersion: "v1",
-			},
-		},
-	}
-)
 
 func TestParseYaml(t *testing.T) {
 	tt := []struct {
@@ -200,32 +186,8 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 }
 
 func configToIstioObj(descriptor istiomodel.ConfigDescriptor, config istiomodel.Config) (IstioObject, error) {
-	// Does config wrap a non-Istio, non-MC Kubernetes type?
-	schema, exists := nonIstioSchema[config.Type]
-	if exists {
-		spec, err := istiomodel.ToJSONMap(config.Spec)
-		if err != nil {
-			return nil, err
-		}
-		namespace := config.Namespace
-		if namespace == "" {
-			namespace = meta_v1.NamespaceDefault
-		}
-		out := nonIstioObject[config.Type].DeepCopyObject().(IstioObject)
-		out.SetObjectMeta(meta_v1.ObjectMeta{
-			Name:            config.Name,
-			Namespace:       namespace,
-			ResourceVersion: config.ResourceVersion,
-			Labels:          config.Labels,
-			Annotations:     config.Annotations,
-		})
-		out.SetSpec(spec)
-
-		return out, nil
-	}
-
 	// Does config wrap an Istio object?
-	schema, exists = descriptor.GetByType(config.Type)
+	schema, exists := descriptor.GetByType(config.Type)
 	if !exists {
 		return nil, fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
 	}
@@ -253,6 +215,22 @@ func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []isti
 		}
 		writer.Write(bytes) // nolint: errcheck
 		if i+1 < len(configs) {
+			writer.Write([]byte("---\n")) // nolint: errcheck
+		}
+	}
+
+	return nil
+}
+
+func writeK8sYAMLOutput(svcs []kube_v1.Service, writer io.Writer) error {
+	for i, svc := range svcs {
+		bytes, err := yaml.Marshal(svc)
+		if err != nil {
+			log.Errorf("Could not convert %v to YAML: %v", svc, err)
+			continue
+		}
+		writer.Write(bytes) // nolint: errcheck
+		if i+1 < len(svcs) {
 			writer.Write([]byte("---\n")) // nolint: errcheck
 		}
 	}
