@@ -115,7 +115,7 @@ func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_Remote
 			Type:        istiomodel.ServiceEntry.Type,
 			Group:       istiomodel.ServiceEntry.Group + istiomodel.IstioAPIGroupDomain,
 			Version:     istiomodel.ServiceEntry.Version,
-			Name:        fmt.Sprintf("service-entry-%s", config.Name), // TODO avoid collisions?
+			Name:        fmt.Sprintf("service-entry-%s", remoteServiceName(rs)),
 			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},
@@ -155,7 +155,7 @@ func serviceToDestinationRuleDirectIngress(rs *v1alpha1.RemoteServiceBinding_Rem
 			Type:        istiomodel.DestinationRule.Type,
 			Group:       istiomodel.DestinationRule.Group + istiomodel.IstioAPIGroupDomain,
 			Version:     istiomodel.DestinationRule.Version,
-			Name:        fmt.Sprintf("dest-rule-%s-%s", config.Name, meta_v1.NamespaceDefault), // TODO avoid collisions?
+			Name:        fmt.Sprintf("dest-rule-%s", remoteServiceName(rs)),
 			Namespace:   config.Namespace,
 			Annotations: annotations(config),
 		},

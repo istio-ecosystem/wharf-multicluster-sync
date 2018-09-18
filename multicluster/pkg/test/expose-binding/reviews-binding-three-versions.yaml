@@ -1,0 +1,21 @@
+# Consume reviews, any version, from cluster2
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  name: reviews
+spec:
+  remote:
+    - cluster: clusterb.myorg
+      services:
+      - alias: reviews
+        name: reviews
+        namespace: default
+        port: 9080
+      - alias: reviews-v1
+        name: reviews-v1
+        namespace: default
+        port: 9080
+      - alias: reviews-v2
+        name: reviews-v2
+        namespace: default
+        port: 9080

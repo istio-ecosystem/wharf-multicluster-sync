@@ -30,10 +30,10 @@ import (
 
 func TestBindingToDirectIngressConfiguration(t *testing.T) {
 	tt := []struct {
-		in    string // Filename of SEP and RSBs
-		store string // Filename for baseline Istio configuration for merging
+		in       string // Filename of SEP and RSBs
+		store    string // Filename for baseline Istio configuration for merging
 		svcStore string // Filename for baseline Kuberentes services configuration for merging
-		out   string // Filename for generated Istio configuration
+		out      string // Filename for generated Istio configuration
 	}{
 		{in: "rshriram-demo-binding.yaml",
 			out: "banix-demo-binding.yaml"},
@@ -46,6 +46,8 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 		{in: "reviews-exposure-both.yaml",
 			out:   "reviews-directingress-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
+		{in: "reviews-binding-three-versions.yaml",
+			out: "reviews-binding-three-versions.yaml"},
 	}
 
 	for _, tc := range tt {

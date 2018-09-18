@@ -47,15 +47,15 @@ func TestReconcileBinding(t *testing.T) {
 	}
 
 	tt := []struct {
-		added         *istiomodel.Config
-		deleted       *istiomodel.Config
-		modified      *istiomodel.Config
-		istioConfig   []istiomodel.Config
-		initialServices []kube_v1.Service
-		additions     []istiomodel.Config
-		deletions     []istiomodel.Config
-		modifications []istiomodel.Config
-		svcAdditions []kube_v1.Service
+		added            *istiomodel.Config
+		deleted          *istiomodel.Config
+		modified         *istiomodel.Config
+		istioConfig      []istiomodel.Config
+		initialServices  []kube_v1.Service
+		additions        []istiomodel.Config
+		deletions        []istiomodel.Config
+		modifications    []istiomodel.Config
+		svcAdditions     []kube_v1.Service
 		svcModifications []kube_v1.Service
 		// TODO svcDeletions []kube_v1.Service
 		wantException bool
@@ -66,12 +66,12 @@ func TestReconcileBinding(t *testing.T) {
 			istioConfig: loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
 			initialServices: loadK8sServiceListFrom("reviews-directingress-binding-starter.yaml",
 				"../test/expose-binding/", t),
-			style:         mcmodel.DirectIngressStyle},
+			style: mcmodel.DirectIngressStyle},
 		// Case 1: If we have nothing configured, adding creates things
 		{added: loadConfig("reviews-binding.yaml", t),
-			additions: loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+			additions:    loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
 			svcAdditions: loadK8sServiceList("reviews-directingress-binding.yaml.golden", t),
-			style:         mcmodel.DirectIngressStyle},
+			style:        mcmodel.DirectIngressStyle},
 	}
 
 	for i, tc := range tt {
@@ -173,15 +173,15 @@ func TestReconcileExposure(t *testing.T) {
 	}
 
 	tt := []struct {
-		added         *istiomodel.Config
-		deleted       *istiomodel.Config
-		modified      *istiomodel.Config
-		istioConfig   []istiomodel.Config
-		initialServices []kube_v1.Service
-		additions     []istiomodel.Config
-		deletions     []istiomodel.Config
-		modifications []istiomodel.Config
-		svcAdditions []kube_v1.Service
+		added            *istiomodel.Config
+		deleted          *istiomodel.Config
+		modified         *istiomodel.Config
+		istioConfig      []istiomodel.Config
+		initialServices  []kube_v1.Service
+		additions        []istiomodel.Config
+		deletions        []istiomodel.Config
+		modifications    []istiomodel.Config
+		svcAdditions     []kube_v1.Service
 		svcModifications []kube_v1.Service
 		// TODO svcDeletions []kube_v1.Service
 		wantException bool

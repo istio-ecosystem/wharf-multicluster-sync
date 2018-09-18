@@ -24,7 +24,7 @@ metadata:
   annotations:
     multicluster.istio.io/provenance: default.reviews
   creationTimestamp: null
-  name: dest-rule-reviews-default
+  name: dest-rule-reviews
 spec:
   host: reviews.default.svc.cluster.local
   trafficPolicy:

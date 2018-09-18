@@ -41,7 +41,7 @@ In _org1_, the developers of _productpage_, aware of _reviews-v2_, decide to sto
 **Demo steps:**
 
 1. In preparation for the next step, a special v2-only endpoint is declared.
-First the Subset is defined using `kubectl apply -f reviews-exposure-started-v1-v2.yaml`.
+First the Subset is defined using `kubectl apply -f reviews-exposure-starter-v1-v2.yaml`.
 Next the Subset is exposed: `kubectl apply -f reviews-exposure-v1-v2.yaml` 
 2. From _cluster1_, create a destination rule to use only _reviews-v2_ on _cluster2_.
 *New* Instead of a destination rule the user modifies the RSB using `kubectl edit remoteservicebinding reviews` and changes _reviews-v1_ to _reviews-v2_.

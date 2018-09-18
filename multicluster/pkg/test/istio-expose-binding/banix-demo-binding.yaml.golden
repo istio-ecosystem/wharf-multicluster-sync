@@ -4,7 +4,7 @@ metadata:
   annotations:
     multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
-  name: service-entry-server-rsb
+  name: service-entry-server
   namespace: default
 spec:
   endpoints:
@@ -25,7 +25,7 @@ metadata:
   annotations:
     multicluster.istio.io/provenance: default.server-rsb
   creationTimestamp: null
-  name: dest-rule-server-rsb-default
+  name: dest-rule-server
   namespace: default
 spec:
   host: server.ns2.svc.cluster.local

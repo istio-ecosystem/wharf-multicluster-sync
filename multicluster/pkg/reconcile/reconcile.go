@@ -21,21 +21,21 @@ import (
 )
 
 type KubernetesChanges struct {
-	Additions []kube_v1.Service
+	Additions     []kube_v1.Service
 	Modifications []kube_v1.Service
-	Deletions []kube_v1.Service
+	Deletions     []kube_v1.Service
 }
 
 type ConfigChanges struct {
-	Additions []istiomodel.Config
+	Additions     []istiomodel.Config
 	Modifications []istiomodel.Config
-	Deletions []istiomodel.Config
-	Kubernetes *KubernetesChanges
+	Deletions     []istiomodel.Config
+	Kubernetes    *KubernetesChanges
 }
 
 type reconciler struct {
-	store istiomodel.ConfigStore
-	services []kube_v1.Service 
+	store       istiomodel.ConfigStore
+	services    []kube_v1.Service
 	clusterInfo model.ClusterInfo
 }
 
@@ -84,8 +84,8 @@ func DeleteMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Co
 
 func NewReconciler(store istiomodel.ConfigStore, services []kube_v1.Service, clusterInfo model.ClusterInfo) Reconciler {
 	return &reconciler{
-		store: store,
-		services: services,
+		store:       store,
+		services:    services,
 		clusterInfo: clusterInfo,
 	}
 }
@@ -128,10 +128,10 @@ func (r *reconciler) AddMulticlusterConfig(newconfig istiomodel.Config) (*Config
 	}
 
 	return &ConfigChanges{
-		Additions: outAdditions,
+		Additions:     outAdditions,
 		Modifications: outModifications,
-		Kubernetes: &KubernetesChanges {
-			Additions: svcAdditions,
+		Kubernetes: &KubernetesChanges{
+			Additions:     svcAdditions,
 			Modifications: svcModifications,
 		},
 	}, nil
@@ -169,8 +169,8 @@ func (r *reconciler) ModifyMulticlusterConfig(config istiomodel.Config) (*Config
 	}
 
 	return &ConfigChanges{
-		Modifications: outModifications, 
-		Kubernetes: &KubernetesChanges {
+		Modifications: outModifications,
+		Kubernetes: &KubernetesChanges{
 			Modifications: svcModifications,
 		},
 	}, nil
@@ -212,7 +212,7 @@ func (r *reconciler) DeleteMulticlusterConfig(config istiomodel.Config) (*Config
 	_ = svcs
 
 	return &ConfigChanges{
-		Deletions: outDeletions, 
+		Deletions: outDeletions,
 	}, err
 }
 
