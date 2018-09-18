@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
-
 	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 	"istio.io/istio/pilot/pkg/model"
@@ -18,7 +16,7 @@ import (
 
 const (
 	pollInterval = 5 * time.Second
-	MODE_ENV     = "CONNECTION_MODE"
+	modeEnvKey   = "CONNECTION_MODE"
 )
 
 // Client is an agent client meant to connect to an agent server on a peered
@@ -115,7 +113,6 @@ func (c *Client) update() {
 	// TODO: Below is an unefficient implemntation to handle update which first delete the RSB
 	// and its Istio configs and then create new ones with the updated info.
 
-	//oldRsb, exists := c.store.Get(mcmodel.RemoteServiceBinding.Type, rsbName, newRsb.Namespace)
 	oldRsb := c.remoteServiceBinding()
 	if oldRsb != nil {
 		c.store.Delete(mcmodel.RemoteServiceBinding.Type, oldRsb.Name, oldRsb.Namespace)
@@ -127,11 +124,6 @@ func (c *Client) update() {
 		// Add it to the config store
 		c.store.Create(*newRsb)
 		log.Debug("RemoteServiceBinding created for the exposed remote service(s)")
-	}
-
-	// Reconcile Istio configs if in live mode
-	if connMode == ConnectionModeLive {
-		c.reconcile(newRsb, oldRsb)
 	}
 }
 
@@ -171,29 +163,6 @@ func (c *Client) createRemoteServiceBinding(exposed *ExposedServices, connection
 				},
 			},
 		},
-	}
-}
-
-// Reconcile will first delete all the reconciled Istio configs for the 'delete'
-// MC config and then add/modify Istio configs for the 'add' MC config
-func (c *Client) reconcile(add *model.Config, delete *model.Config) {
-	if delete != nil {
-		// Use the reconcile to generate the inferred Istio configs for the deleted binding
-		deleted, err := reconcile.DeleteMulticlusterConfig(c.istioStore, *delete, c.config)
-		if err != nil {
-			log.Errora(err)
-		}
-		StoreIstioConfigs(c.istioStore, nil, nil, deleted)
-	}
-
-	if add != nil {
-		// Use the reconcile to generate the inferred Istio configs for the added binding
-		added, modified, err := reconcile.AddMulticlusterConfig(c.istioStore, *add, c.config)
-		if err != nil {
-			log.Errora(err)
-			return
-		}
-		StoreIstioConfigs(c.istioStore, added, modified, nil)
 	}
 }
 
@@ -258,7 +227,7 @@ func (c *Client) remoteServiceBinding() *model.Config {
 func getConnectionMode(peerID string) string {
 	// TODO Watch a ConfigMap and use that value to let the user dynamically set the mode
 	// for each cluster.
-	mode := os.Getenv(MODE_ENV)
+	mode := os.Getenv(modeEnvKey)
 	if mode != "" {
 		return mode
 	}

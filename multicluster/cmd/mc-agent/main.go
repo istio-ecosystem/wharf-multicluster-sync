@@ -1,9 +1,6 @@
 package main
 
 import (
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/kubernetes"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -18,7 +15,6 @@ import (
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
 	mccrd "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
 
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
@@ -43,6 +39,8 @@ var (
 	istioStore    model.ConfigStore
 	clusterConfig *agent.ClusterConfig
 
+	configsMgmt *agent.ConfigsManagement
+
 	bindingsConnMode = map[string]string{}
 )
 
@@ -65,6 +63,12 @@ func main() {
 	istioStore, err := makeKubeConfigIstioController()
 	if err != nil {
 		log.Errora(err)
+		return
+	}
+
+	configsMgmt = agent.NewConfigsManagement(kubeconfig, context, istioStore, clusterConfig)
+	if configsMgmt == nil {
+		log.Error("Failed to create an instance of ConfigsManagement")
 		return
 	}
 
@@ -92,28 +96,13 @@ func main() {
 		switch ev {
 		case model.EventAdd:
 			log.Debugf("ServiceExpositionPolicy resource was added. Name: %s.%s", config.Namespace, config.Name)
-
-			added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
-			if err != nil {
-				log.Errora(err)
-			}
-			agent.StoreIstioConfigs(istioStore, added, modified, nil)
+			configsMgmt.McConfigAdded(config)
 		case model.EventDelete:
 			log.Debugf("ServiceExpositionPolicy resource was deleted. Name: %s.%s", config.Namespace, config.Name)
-
-			deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
-			if err != nil {
-				log.Errora(err)
-			}
-			agent.StoreIstioConfigs(istioStore, nil, nil, deleted)
+			configsMgmt.McConfigDeleted(config)
 		case model.EventUpdate:
 			log.Debugf("ServiceExpositionPolicy resource was updated. Name: %s.%s", config.Namespace, config.Name)
-
-			updated, err := reconcile.ModifyMulticlusterConfig(istioStore, config, clusterConfig)
-			if err != nil {
-				log.Errora(err)
-			}
-			agent.StoreIstioConfigs(istioStore, nil, updated, nil)
+			configsMgmt.McConfigModified(config)
 		}
 		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(mcStore.ServiceExpositionPolicies()))
 	})
@@ -127,9 +116,11 @@ func main() {
 		case model.EventAdd:
 			log.Debugf("RemoteServiceBinding resource was added. Key: %s", configKey)
 			bindingsConnMode[configKey] = connMode
+			configsMgmt.McConfigAdded(config)
 		case model.EventDelete:
 			log.Debugf("RemoteServiceBinding resource was deleted. Key: %s", configKey)
 			bindingsConnMode[configKey] = ""
+			configsMgmt.McConfigDeleted(config)
 		case model.EventUpdate:
 			log.Debugf("RemoteServiceBinding resource was updated. Key: %s", configKey)
 			if connMode != bindingsConnMode[configKey] {
@@ -137,17 +128,9 @@ func main() {
 				//Mode changed
 				switch connMode {
 				case agent.ConnectionModeLive:
-					added, modified, err := reconcile.AddMulticlusterConfig(istioStore, config, clusterConfig)
-					if err != nil {
-						log.Errora(err)
-					}
-					agent.StoreIstioConfigs(istioStore, added, modified, nil)
+					configsMgmt.McConfigAdded(config)
 				case agent.ConnectionModePotential:
-					deleted, err := reconcile.DeleteMulticlusterConfig(istioStore, config, clusterConfig)
-					if err != nil {
-						log.Errora(err)
-					}
-					agent.StoreIstioConfigs(istioStore, nil, nil, deleted)
+					configsMgmt.McConfigDeleted(config)
 				}
 				bindingsConnMode[configKey] = connMode
 			}
@@ -207,20 +190,6 @@ func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
 	ctl := crd.NewController(configClient, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
 
 	return ctl, nil
-}
-
-func makeK8sServicesClient() (corev1.ServiceInterface, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientset.CoreV1().Services(""), nil
 }
 
 // loadConfig will load the cluster configuration from the provided JSON file
