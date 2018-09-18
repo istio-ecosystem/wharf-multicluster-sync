@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: reviews
+spec:
+  ports:
+  - port: 9080
+    protocol: TCP
+    targetPort: 0
+  type: ClusterIP
+status:
+  loadBalancer: {}

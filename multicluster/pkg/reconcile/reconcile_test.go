@@ -22,6 +22,8 @@ import (
 
 	multiclustercrd "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+
+	kube_v1 "k8s.io/api/core/v1"
 )
 
 // TODO Merge with version in pkg/agent/config/kube/crd?
@@ -32,7 +34,300 @@ type debugClusterInfo struct {
 	ports map[string]uint32
 }
 
-func TestReconcile(t *testing.T) {
+func TestReconcileBinding(t *testing.T) {
+	ci := debugClusterInfo{
+		ips: map[string]string{
+			"clusterC": "127.0.0.1",
+			"cluster2": "127.0.0.1",
+		},
+		ports: map[string]uint32{
+			"clusterC": 80,
+			"cluster2": 80,
+		},
+	}
+
+	tt := []struct {
+		added         *istiomodel.Config
+		deleted       *istiomodel.Config
+		modified      *istiomodel.Config
+		istioConfig   []istiomodel.Config
+		initialServices []kube_v1.Service
+		additions     []istiomodel.Config
+		deletions     []istiomodel.Config
+		modifications []istiomodel.Config
+		svcAdditions []kube_v1.Service
+		svcModifications []kube_v1.Service
+		// TODO svcDeletions []kube_v1.Service
+		wantException bool
+		style         string
+	}{
+		// Case 0: if we have already configured, adding again won't change things
+		{added: loadConfig("reviews-binding.yaml", t),
+			istioConfig: loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+			initialServices: loadK8sServiceListFrom("reviews-directingress-binding-starter.yaml",
+				"../test/expose-binding/", t),
+			style:         mcmodel.DirectIngressStyle},
+		// Case 1: If we have nothing configured, adding creates things
+		{added: loadConfig("reviews-binding.yaml", t),
+			additions: loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+			svcAdditions: loadK8sServiceList("reviews-directingress-binding.yaml.golden", t),
+			style:         mcmodel.DirectIngressStyle},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
+			if tc.style != "" {
+				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style)
+			} else {
+				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle)
+			}
+
+			cs, err := createDebugConfigStore(tc.istioConfig)
+			if err != nil {
+				t.Error(err)
+			}
+
+			r := NewReconciler(cs, tc.initialServices, ci)
+			var errAdditions error
+			var errModifications error
+			var errDeletions error
+			if tc.added != nil {
+				var addChanges *ConfigChanges
+				addChanges, errAdditions = r.AddMulticlusterConfig(*tc.added)
+				if errAdditions == nil {
+					err = checkEqualConfigs(addChanges.Additions, tc.additions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated additions unexpected:"))
+					}
+					err = checkEqualConfigs(addChanges.Modifications, tc.modifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected:"))
+					}
+					err = checkEqualServices(addChanges.Kubernetes.Additions, tc.svcAdditions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated K8s modifications unexpected:"))
+					}
+					err = checkEqualServices(addChanges.Kubernetes.Modifications, tc.svcModifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated K8s modifications unexpected:"))
+					}
+				}
+			}
+
+			if tc.modified != nil {
+				var modChanges *ConfigChanges
+				modChanges, errModifications = r.ModifyMulticlusterConfig(*tc.modified)
+				if errModifications == nil {
+					err = checkEqualConfigs(modChanges.Modifications, tc.modifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+					err = checkEqualServices(modChanges.Kubernetes.Modifications, tc.svcModifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+				}
+			}
+
+			if tc.deleted != nil {
+				var delChanges *ConfigChanges
+				delChanges, errDeletions = r.DeleteMulticlusterConfig(*tc.deleted)
+				if errDeletions == nil {
+					err = checkEqualConfigMetas(delChanges.Deletions, tc.deletions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Proposed deletions unexpected"))
+					}
+					// TODO Check deletions
+				}
+			}
+
+			if tc.wantException {
+				if errAdditions == nil && errModifications == nil && errDeletions == nil {
+					t.Error("Expected exception; did not receive one")
+				}
+			} else {
+				if errAdditions != nil {
+					t.Error(errAdditions)
+				}
+				if errModifications != nil {
+					t.Error(errModifications)
+				}
+				if errDeletions != nil {
+					t.Error(errDeletions)
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileExposure(t *testing.T) {
+	ci := debugClusterInfo{
+		ips: map[string]string{
+			"clusterC": "127.0.0.1",
+			"cluster2": "127.0.0.1",
+		},
+		ports: map[string]uint32{
+			"clusterC": 80,
+			"cluster2": 80,
+		},
+	}
+
+	tt := []struct {
+		added         *istiomodel.Config
+		deleted       *istiomodel.Config
+		modified      *istiomodel.Config
+		istioConfig   []istiomodel.Config
+		initialServices []kube_v1.Service
+		additions     []istiomodel.Config
+		deletions     []istiomodel.Config
+		modifications []istiomodel.Config
+		svcAdditions []kube_v1.Service
+		svcModifications []kube_v1.Service
+		// TODO svcDeletions []kube_v1.Service
+		wantException bool
+		style         string
+	}{
+		// Case 0: if we have already configured, adding again won't change things
+		{added: loadConfig("rshriram-demo-exposure.yaml", t),
+			istioConfig: loadIstioConfigList("rshriram-demo-exposure.yaml.golden", t)},
+		// Case 1: If we have nothing configured, adding creates things
+		{added: loadConfig("rshriram-demo-exposure.yaml", t),
+			additions: loadIstioConfigList("rshriram-demo-exposure.yaml.golden", t)},
+		// Case 2: If we delete, the config should go away
+		{deleted: loadConfig("rshriram-demo-exposure.yaml", t),
+			istioConfig: loadIstioConfigList("rshriram-demo-exposure.yaml.golden", t),
+			deletions: []istiomodel.Config{
+				istiomodel.Config{
+					ConfigMeta: istiomodel.ConfigMeta{
+						Type:      "destination-rule",
+						Name:      "dest-rule-server-default-notls",
+						Namespace: "ns2",
+					},
+				},
+				istiomodel.Config{
+					ConfigMeta: istiomodel.ConfigMeta{
+						Type:      "gateway",
+						Name:      "istio-ingressgateway-server-ns2",
+						Namespace: "ns2",
+					},
+				},
+				istiomodel.Config{
+					ConfigMeta: istiomodel.ConfigMeta{
+						Type:      "virtual-service",
+						Name:      "ingressgateway-to-server-ns2",
+						Namespace: "ns2",
+					},
+				},
+			},
+		},
+		// Case 3: If we delete things never realized, we should (internally) fail reconciliation
+		{deleted: loadConfig("rshriram-demo-exposure.yaml", t),
+			wantException: true},
+		// Case 4: Direct Ingress style
+		{added: loadConfig("rshriram-demo-exposure.yaml", t),
+			istioConfig: loadIstioConfigList("banix-demo-exposure.yaml.golden", t),
+			style:       mcmodel.DirectIngressStyle},
+		// Case 5: Direct Ingress style with subset
+		{added: loadConfig("reviews-exposure-v1-only.yaml", t),
+			istioConfig:   loadIstioConfigListFrom("reviews-exposure-starter.yaml", "../test/expose-binding/", t),
+			additions:     loadIstioConfigList("reviews-sni-exposure-v1-only-additions.yaml.golden", t),
+			modifications: loadIstioConfigList("reviews-sni-exposure-v1-only-modifications.yaml.golden", t),
+			style:         mcmodel.DirectIngressStyle},
+		// Case 6: Direct Ingress style, no subset, DR already exists
+		{added: loadConfig("reviews-exposure.yaml", t),
+			istioConfig:   loadIstioConfigListFrom("reviews-exposure-starter.yaml", "../test/expose-binding/", t),
+			additions:     loadIstioConfigList("reviews-sni-exposure-additions.yaml.golden", t),
+			modifications: loadIstioConfigList("reviews-sni-exposure-modifications.yaml.golden", t),
+			style:         mcmodel.DirectIngressStyle},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
+			if tc.style != "" {
+				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style)
+			} else {
+				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle)
+			}
+
+			cs, err := createDebugConfigStore(tc.istioConfig)
+			if err != nil {
+				t.Error(err)
+			}
+
+			r := NewReconciler(cs, tc.initialServices, ci)
+			var errAdditions error
+			var errModifications error
+			var errDeletions error
+			if tc.added != nil {
+				var addChanges *ConfigChanges
+				addChanges, errAdditions = r.AddMulticlusterConfig(*tc.added)
+				if errAdditions == nil {
+					err = checkEqualConfigs(addChanges.Additions, tc.additions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated additions unexpected"))
+					}
+					err = checkEqualConfigs(addChanges.Modifications, tc.modifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+					err = checkEqualServices(addChanges.Kubernetes.Additions, tc.svcAdditions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+					err = checkEqualServices(addChanges.Kubernetes.Modifications, tc.svcModifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+				}
+			}
+
+			if tc.modified != nil {
+				var modChanges *ConfigChanges
+				modChanges, errModifications = r.ModifyMulticlusterConfig(*tc.modified)
+				if errModifications == nil {
+					err = checkEqualConfigs(modChanges.Modifications, tc.modifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+					err = checkEqualServices(modChanges.Kubernetes.Modifications, tc.svcModifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated modifications unexpected"))
+					}
+				}
+			}
+
+			if tc.deleted != nil {
+				var delChanges *ConfigChanges
+				delChanges, errDeletions = r.DeleteMulticlusterConfig(*tc.deleted)
+				if errDeletions == nil {
+					err = checkEqualConfigMetas(delChanges.Deletions, tc.deletions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Proposed deletions unexpected"))
+					}
+					// TODO Check deletions
+				}
+			}
+
+			if tc.wantException {
+				if errAdditions == nil && errModifications == nil && errDeletions == nil {
+					t.Error("Expected exception; did not receive one")
+				}
+			} else {
+				if errAdditions != nil {
+					t.Error(errAdditions)
+				}
+				if errModifications != nil {
+					t.Error(errModifications)
+				}
+				if errDeletions != nil {
+					t.Error(errDeletions)
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileDeprecated(t *testing.T) {
 	ci := debugClusterInfo{
 		ips: map[string]string{
 			"clusterC": "127.0.0.1",
@@ -213,6 +508,62 @@ func loadConfigList(fname string, t *testing.T) []istiomodel.Config {
 	return configs
 }
 
+// loadK8sServiceList loads *Kubernetes* configuration (currently just Services) from the test directory
+func loadK8sServiceList(fname string, t *testing.T) []kube_v1.Service {
+	return loadK8sServiceListFrom(fname, "../test/istio-expose-binding/", t)
+}
+
+// loadK8sServiceListFrom loads *Kubernetes* configuration (currently just Services) from the test directory
+func loadK8sServiceListFrom(fname string, dirname string, t *testing.T) []kube_v1.Service {
+	reader, err := os.Open(dirname + fname)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer reader.Close() // nolint: errcheck
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outSvcs := make([]kube_v1.Service, 0)
+	_, kinds, err := istiocrd.ParseInputs(string(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, nonIstio := range kinds {
+		if nonIstio.Kind == "Service" &&
+			nonIstio.APIVersion == "v1" {
+
+			svc, err := parseService(nonIstio)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			outSvcs = append(outSvcs, *svc)
+		}
+	}
+
+	return outSvcs
+}
+
+func parseService(unparsed istiocrd.IstioKind) (*kube_v1.Service, error) {
+	// To convert unparsed to a v1beta1.Ingress Marshal into JSON and Unmarshal back
+	b, err := json.Marshal(unparsed)
+	if err != nil {
+		return nil, multierror.Prefix(err, "can't reserialize Service")
+	}
+
+	out := &kube_v1.Service{}
+	err = json.Unmarshal(b, out)
+	if err != nil {
+		return nil, multierror.Prefix(err, "can't deserialize as Service")
+	}
+
+	return out, nil
+}
+
 // loadIstioConfigList loads *Istio* configuration (VirtualService, Gateway, etc) from the test directory
 func loadIstioConfigList(fname string, t *testing.T) []istiomodel.Config {
 	return loadIstioConfigListFrom(fname, "../test/istio-expose-binding/", t)
@@ -345,4 +696,28 @@ func (ci debugClusterInfo) Port(name string) uint32 {
 		return out
 	}
 	return 8080 // dummy value for unknown clusters
+}
+
+func checkEqualServices(svcs []kube_v1.Service, expected []kube_v1.Service) error {
+	if len(svcs) != len(expected) {
+		return fmt.Errorf("Service definitions don't match: different number of elements %d vs expected %d (%#v vs expected %#v)",
+			len(svcs), len(expected), svcs, expected)
+	}
+
+	lookup := indexServices(expected, svcIndex)
+	for _, svc := range svcs {
+		expectedSvc, ok := lookup[svcIndex(svc)]
+		if !ok {
+			return fmt.Errorf("Service %s.%s (kind %s) unexpected", svc.Name, svc.Namespace, svc.Kind)
+		}
+		// The metadata will be close enough because it was looked up, only compare the Specs
+		if !reflect.DeepEqual(svc.Spec, expectedSvc.Spec) {
+			wanted, _ := json.Marshal(expectedSvc.Spec)
+			got, _ := json.Marshal(svc.Spec)
+			return fmt.Errorf("Configuration of %s %s.%s %s unexpected (expected %s)", svc.Kind, svc.Name, svc.Namespace, string(got), string(wanted))
+		}
+	}
+
+	// Success, all were found
+	return nil
 }
