@@ -12,7 +12,7 @@ spec:
     ports:
       http: 80
   hosts:
-  - server.ns2.svc.cluster.global
+  - server.ns2.svc.cluster.local
   ports:
   - name: http
     number: 80
@@ -28,14 +28,14 @@ metadata:
   name: dest-rule-server-rsb-ns2
   namespace: default
 spec:
-  host: server.ns2.svc.cluster.global
+  host: server.ns2.svc.cluster.local
   trafficPolicy:
     tls:
       caCertificates: /etc/certs/root-cert.pem
       clientCertificate: /etc/certs/cert-chain.pem
       mode: MUTUAL
       privateKey: /etc/certs/key.pem
-      sni: server.ns2.svc.cluster.global
+      sni: server.ns2.svc.cluster.local
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
@@ -50,7 +50,7 @@ spec:
     istio: egressgateway
   servers:
   - hosts:
-    - server.ns2.svc.cluster.global
+    - server.ns2.svc.cluster.local
     port:
       name: server-ns2-80
       number: 80
@@ -69,12 +69,12 @@ spec:
   gateways:
   - istio-egressgateway-server-ns2
   hosts:
-  - server.ns2.svc.cluster.global
+  - server.ns2.svc.cluster.local
   tls:
   - match:
     - port: 80
       sniHosts:
-      - server.ns2.svc.cluster.global
+      - server.ns2.svc.cluster.local
     route:
     - destination:
         host: cluster2.myorg

@@ -12,7 +12,7 @@ spec:
     ports:
       http: 80
   hosts:
-  - remoteFooA.my-remote.svc.cluster.global
+  - remoteFooA.my-remote.svc.cluster.local
   ports:
   - name: http
     number: 80
@@ -28,14 +28,14 @@ metadata:
   name: dest-rule-sample1-my-remote
   namespace: mynamespace
 spec:
-  host: remoteFooA.my-remote.svc.cluster.global
+  host: remoteFooA.my-remote.svc.cluster.local
   trafficPolicy:
     tls:
       caCertificates: /etc/certs/root-cert.pem
       clientCertificate: /etc/certs/cert-chain.pem
       mode: MUTUAL
       privateKey: /etc/certs/key.pem
-      sni: remoteFooA.my-remote.svc.cluster.global
+      sni: remoteFooA.my-remote.svc.cluster.local
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
@@ -50,7 +50,7 @@ spec:
     istio: egressgateway
   servers:
   - hosts:
-    - remoteFooA.my-remote.svc.cluster.global
+    - remoteFooA.my-remote.svc.cluster.local
     port:
       name: remoteFooA-my-remote-80
       number: 80
@@ -69,12 +69,12 @@ spec:
   gateways:
   - istio-egressgateway-FooA-my-remote
   hosts:
-  - remoteFooA.my-remote.svc.cluster.global
+  - remoteFooA.my-remote.svc.cluster.local
   tls:
   - match:
     - port: 80
       sniHosts:
-      - remoteFooA.my-remote.svc.cluster.global
+      - remoteFooA.my-remote.svc.cluster.local
     route:
     - destination:
         host: clusterc.myorg

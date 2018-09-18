@@ -32,7 +32,7 @@ spec:
     istio: ingressgateway
   servers:
   - hosts:
-    - reviews.default.svc.cluster.global
+    - reviews.default.svc.cluster.local
     port:
       name: reviews-default-80
       number: 80
@@ -51,12 +51,12 @@ spec:
   gateways:
   - istio-ingressgateway-reviews-default
   hosts:
-  - reviews.default.svc.cluster.global
+  - reviews.default.svc.cluster.local
   tls:
   - match:
     - port: 80
       sniHosts:
-      - reviews.default.svc.cluster.global
+      - reviews.default.svc.cluster.local
     route:
     - destination:
         host: reviews.default.svc.cluster.local
@@ -77,7 +77,7 @@ spec:
     istio: ingressgateway
   servers:
   - hosts:
-    - reviews-v1.default.svc.cluster.global
+    - reviews-v1.default.svc.cluster.local
     port:
       name: reviews-default-80
       number: 80
@@ -96,12 +96,12 @@ spec:
   gateways:
   - istio-ingressgateway-reviews-v1-default
   hosts:
-  - reviews-v1.default.svc.cluster.global
+  - reviews-v1.default.svc.cluster.local
   tls:
   - match:
     - port: 80
       sniHosts:
-      - reviews-v1.default.svc.cluster.global
+      - reviews-v1.default.svc.cluster.local
     route:
     - destination:
         host: reviews.default.svc.cluster.local

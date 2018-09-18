@@ -26,7 +26,7 @@ spec:
     istio: ingressgateway
   servers:
   - hosts:
-    - FooA.mynamespace.svc.cluster.global
+    - FooA.mynamespace.svc.cluster.local
     port:
       name: ServiceA-mynamespace-80
       number: 80
@@ -45,12 +45,12 @@ spec:
   gateways:
   - istio-ingressgateway-FooA-mynamespace
   hosts:
-  - FooA.mynamespace.svc.cluster.global
+  - FooA.mynamespace.svc.cluster.local
   tls:
   - match:
     - port: 80
       sniHosts:
-      - FooA.mynamespace.svc.cluster.global
+      - FooA.mynamespace.svc.cluster.local
     route:
     - destination:
         host: ServiceA.mynamespace.svc.cluster.local

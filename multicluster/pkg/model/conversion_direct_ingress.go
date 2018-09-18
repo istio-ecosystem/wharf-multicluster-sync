@@ -201,7 +201,9 @@ func serviceToKubernetesServiceDirectIngress(rs *v1alpha1.RemoteServiceBinding_R
 }
 
 func rsAliasHostname(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.global", rs.Name, remoteServiceNamespace(rs))
+	// We give a .local rather than .global hostname so that we can use a K8s Service
+	// to create the DNS and keep apps from knowing the communication is multi-cluster
+	return fmt.Sprintf("%s.%s.svc.cluster.local", rs.Name, remoteServiceNamespace(rs))
 }
 
 func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config) ([]istiomodel.Config, error) {
@@ -334,7 +336,9 @@ func expositionToGatewayDirectIngress(es *v1alpha1.ServiceExpositionPolicy_Expos
 						Protocol: "TLS",
 						Name:     fmt.Sprintf("%s-%s-%d", es.Name, getNamespace(config), 80),
 					},
-					Hosts: []string{fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), getNamespace(config))},
+					// We give a .local rather than .global hostname so that we can use a K8s Service
+					// to create the DNS and keep apps from knowing the communication is multi-cluster
+					Hosts: []string{fmt.Sprintf("%s.%s.svc.cluster.local", exposedServiceName(es), getNamespace(config))},
 					Tls: &v1alpha3.Server_TLSOptions{
 						Mode: v1alpha3.Server_TLSOptions_PASSTHROUGH,
 					},

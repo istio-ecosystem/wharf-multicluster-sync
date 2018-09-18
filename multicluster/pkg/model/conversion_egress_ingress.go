@@ -28,7 +28,9 @@ func remoteServiceNamespace(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_Remo
 }
 
 func rsHostname(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.global", remoteServiceName(rs), remoteServiceNamespace(rs))
+	// We give a .local rather than .global hostname so that we can use a K8s Service
+	// to create the DNS and keep apps from knowing the communication is multi-cluster
+	return fmt.Sprintf("%s.%s.svc.cluster.local", remoteServiceName(rs), remoteServiceNamespace(rs))
 }
 
 // serviceToServiceEntry() creates a ServiceEntry pointing to istio-egressgateway
@@ -288,7 +290,9 @@ func expositionToGateway(es *v1alpha1.ServiceExpositionPolicy_ExposedService, co
 						Protocol: "TLS",
 						Name:     fmt.Sprintf("%s-%s-%d", es.Name, getNamespace(config), 80),
 					},
-					Hosts: []string{fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), getNamespace(config))},
+					// We give a .local rather than .global hostname so that we can use a K8s Service
+					// to create the DNS and keep apps from knowing the communication is multi-cluster
+					Hosts: []string{fmt.Sprintf("%s.%s.svc.cluster.local", exposedServiceName(es), getNamespace(config))},
 					Tls: &v1alpha3.Server_TLSOptions{
 						Mode: v1alpha3.Server_TLSOptions_PASSTHROUGH,
 					},
@@ -300,7 +304,9 @@ func expositionToGateway(es *v1alpha1.ServiceExpositionPolicy_ExposedService, co
 }
 
 func esHostname(config istiomodel.Config, es *v1alpha1.ServiceExpositionPolicy_ExposedService) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.global", exposedServiceName(es), getNamespace(config))
+	// We give a .local rather than .global hostname so that we can use a K8s Service
+	// to create the DNS and keep apps from knowing the communication is multi-cluster
+	return fmt.Sprintf("%s.%s.svc.cluster.local", exposedServiceName(es), getNamespace(config))
 }
 
 // expositionToVirtualService() creates a VirtualService with sniHosts
