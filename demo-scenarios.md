@@ -33,9 +33,6 @@ The steps below demonstrate the automatic (as opposed to user-triggered) binding
 2. Expose _ratings_ on cluster3. `kubectl apply -f ratings-exposure.yaml`
 3. Expose _reviews-v2_ on _cluster2_. *nothing to do, because new versions automatically get traffic*
 4. Using the _Bookinfo_ application, show that by default traffic is split between _reviews-v1_ and _reviews-v2_ in a round-robin fashion. Note that the new version of a service available on _cluster2_ was automatically picked up by _cluster1_, and that a service exposed by _cluster3_ was automatically picked up by _cluster2_.
-[new] 5. In preparation for the next scenario, a special v2-only endpoint is declared.
-First the Subset is defined using `kubectl apply -f reviews-exposure-started-v1-v2.yaml`.
-Next the Subset is exposed: `kubectl apply -f reviews-exposure-v1-v2.yaml` 
 
 ### Dev team of _productpage_ decides to use _reviews-v2_ only
 
@@ -43,6 +40,9 @@ In _org1_, the developers of _productpage_, aware of _reviews-v2_, decide to sto
 
 **Demo steps:**
 
-1. From _cluster1_, create a destination rule to use only _reviews-v2_ on _cluster2_.
+1. In preparation for the next step, a special v2-only endpoint is declared.
+First the Subset is defined using `kubectl apply -f reviews-exposure-started-v1-v2.yaml`.
+Next the Subset is exposed: `kubectl apply -f reviews-exposure-v1-v2.yaml` 
+2. From _cluster1_, create a destination rule to use only _reviews-v2_ on _cluster2_.
 *New* Instead of a destination rule the user modifies the RSB using `kubectl edit remoteservicebinding reviews` and changes _reviews-v1_ to _reviews-v2_.
-2. Show the result by using the _Bookinfo_ application.
+3. Show the result by using the _Bookinfo_ application.
