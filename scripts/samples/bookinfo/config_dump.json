@@ -1,0 +1,209 @@
+{
+    "apiVersion": "networking.istio.io/v1alpha3",
+    "kind": "ServiceEntry",
+    "metadata": {
+        "annotations": {
+            "multicluster.istio.io/provenance": "default.clusterb.myorg-services"
+        },
+        "clusterName": "",
+        "creationTimestamp": "2018-09-19T15:26:40Z",
+        "generation": 1,
+        "name": "service-entry-reviews",
+        "namespace": "default",
+        "resourceVersion": "351673",
+        "selfLink": "/apis/networking.istio.io/v1alpha3/namespaces/default/serviceentries/service-entry-reviews",
+        "uid": "681b9279-bc20-11e8-bc59-86aa33f2b1f4"
+    },
+    "spec": {
+        "endpoints": [
+            {
+                "address": "169.62.129.91",
+                "ports": {
+                    "http": 80
+                }
+            }
+        ],
+        "hosts": [
+            "reviews.default.svc.cluster.local"
+        ],
+        "ports": [
+            {
+                "name": "http",
+                "number": 9080,
+                "protocol": "HTTP"
+            }
+        ],
+        "resolution": "STATIC"
+    }
+}
+{
+    "apiVersion": "networking.istio.io/v1alpha3",
+    "kind": "DestinationRule",
+    "metadata": {
+        "annotations": {
+            "multicluster.istio.io/provenance": "default.clusterb.myorg-services"
+        },
+        "clusterName": "",
+        "creationTimestamp": "2018-09-19T15:26:40Z",
+        "generation": 1,
+        "name": "dest-rule-reviews",
+        "namespace": "default",
+        "resourceVersion": "351895",
+        "selfLink": "/apis/networking.istio.io/v1alpha3/namespaces/default/destinationrules/dest-rule-reviews",
+        "uid": "68231324-bc20-11e8-bc59-86aa33f2b1f4"
+    },
+    "spec": {
+        "host": "reviews.default.svc.cluster.local",
+        "trafficPolicy": {
+            "tls": {
+                "caCertificates": "/etc/certs/root-cert.pem",
+                "clientCertificate": "/etc/certs/cert-chain.pem",
+                "mode": "MUTUAL",
+                "privateKey": "/etc/certs/key.pem",
+                "sni": "reviews.default.svc.cluster.local"
+            }
+        }
+    }
+}
+{
+    "apiVersion": "networking.istio.io/v1alpha3",
+    "kind": "DestinationRule",
+    "metadata": {
+        "annotations": {
+            "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"networking.istio.io/v1alpha3\",\"kind\":\"DestinationRule\",\"metadata\":{\"annotations\":{},\"name\":\"dest-rule-reviews-default-notls\",\"namespace\":\"default\"},\"spec\":{\"host\":\"reviews.default.svc.cluster.local\",\"subsets\":[{\"labels\":{\"version\":\"v1\"},\"name\":\"v1\"},{\"labels\":{\"version\":\"v2\"},\"name\":\"v2\"}]}}\n",
+            "multicluster.istio.io/provenance": "default.reviews"
+        },
+        "clusterName": "",
+        "creationTimestamp": "2018-09-19T15:25:08Z",
+        "generation": 1,
+        "name": "dest-rule-reviews-default-notls",
+        "namespace": "default",
+        "resourceVersion": "2635925",
+        "selfLink": "/apis/networking.istio.io/v1alpha3/namespaces/default/destinationrules/dest-rule-reviews-default-notls",
+        "uid": "30f3ea36-bc20-11e8-8f6a-c639196dac94"
+    },
+    "spec": {
+        "host": "reviews.default.svc.cluster.local",
+        "subsets": [
+            {
+                "name": "notls",
+                "trafficPolicy": {
+                    "tls": {}
+                }
+            },
+            {
+                "labels": {
+                    "version": "v1"
+                },
+                "name": "notls-v1",
+                "trafficPolicy": {
+                    "tls": {}
+                }
+            },
+            {
+                "labels": {
+                    "version": "v2"
+                },
+                "name": "notls-v2",
+                "trafficPolicy": {
+                    "tls": {}
+                }
+            },
+            {
+                "labels": {
+                    "version": "v1"
+                },
+                "name": "v1"
+            },
+            {
+                "labels": {
+                    "version": "v2"
+                },
+                "name": "v2"
+            }
+        ]
+    }
+}
+{
+    "apiVersion": "networking.istio.io/v1alpha3",
+    "kind": "Gateway",
+    "metadata": {
+        "annotations": {
+            "multicluster.istio.io/provenance": "default.reviews"
+        },
+        "clusterName": "",
+        "creationTimestamp": "2018-09-19T15:25:08Z",
+        "generation": 1,
+        "name": "istio-ingressgateway-reviews-default",
+        "namespace": "default",
+        "resourceVersion": "2635783",
+        "selfLink": "/apis/networking.istio.io/v1alpha3/namespaces/default/gateways/istio-ingressgateway-reviews-default",
+        "uid": "30fe6993-bc20-11e8-8f6a-c639196dac94"
+    },
+    "spec": {
+        "selector": {
+            "istio": "ingressgateway"
+        },
+        "servers": [
+            {
+                "hosts": [
+                    "reviews.default.svc.cluster.local"
+                ],
+                "port": {
+                    "name": "reviews-default-80",
+                    "number": 80,
+                    "protocol": "TLS"
+                },
+                "tls": {}
+            }
+        ]
+    }
+}
+{
+    "apiVersion": "networking.istio.io/v1alpha3",
+    "kind": "VirtualService",
+    "metadata": {
+        "annotations": {
+            "multicluster.istio.io/provenance": "default.reviews"
+        },
+        "clusterName": "",
+        "creationTimestamp": "2018-09-19T15:25:08Z",
+        "generation": 1,
+        "name": "ingressgateway-to-reviews-default",
+        "namespace": "default",
+        "resourceVersion": "2635784",
+        "selfLink": "/apis/networking.istio.io/v1alpha3/namespaces/default/virtualservices/ingressgateway-to-reviews-default",
+        "uid": "3108dd65-bc20-11e8-8f6a-c639196dac94"
+    },
+    "spec": {
+        "gateways": [
+            "istio-ingressgateway-reviews-default"
+        ],
+        "hosts": [
+            "reviews.default.svc.cluster.local"
+        ],
+        "tls": [
+            {
+                "match": [
+                    {
+                        "port": 80,
+                        "sniHosts": [
+                            "reviews.default.svc.cluster.local"
+                        ]
+                    }
+                ],
+                "route": [
+                    {
+                        "destination": {
+                            "host": "reviews.default.svc.cluster.local",
+                            "port": {
+                                "number": 9080
+                            },
+                            "subset": "notls"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}

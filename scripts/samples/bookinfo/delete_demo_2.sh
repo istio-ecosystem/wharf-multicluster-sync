@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set +e
 
 source ~/Sandbox/kube_context.sh
 

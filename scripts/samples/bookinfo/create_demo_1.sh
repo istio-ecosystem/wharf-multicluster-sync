@@ -16,5 +16,5 @@ kubectl --context ${CLUSTER2_NAME} create  -f ./reviews-exposure.yaml
 export INGRESS_HOST=$(kubectl --context $CLUSTER1_NAME  get po -l istio=ingressgateway -n istio-system -o 'jsonpath={.items[0].status.hostIP}')
 export INGRESS_PORT=$(kubectl --context  $CLUSTER1_NAME -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
 export GATEWAY_URL=$INGRESS_HOST:$INGRESS_PORT
-echo $GATEWAY_URL
+echo " *** Accees Bookinfo at: http://"${GATEWAY_URL}"/productpage ***"
 

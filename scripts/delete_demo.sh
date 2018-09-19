@@ -8,6 +8,7 @@ kubectl --context ${ROOTCA_NAME} delete  -f istio-citadel-standalone.yaml
 
 for CLUSTER in ${CLUSTER1_NAME} ${CLUSTER2_NAME} ${ROOTCA_NAME} ${CLUSTER3_NAME}
 do
+  echo "Deleting Istio resources on" $CLUSTER 
   kubectl --context ${ROOTCA_NAME} delete serviceaccount -n istio-system istio-citadel-service-account-${CLUSTER}
   kubectl --context ${CLUSTER} delete  -f ${ISTIODIR}/install/kubernetes/istio-demo-auth.yaml
   kubectl --context ${CLUSTER} delete  -f istio-citadel-new.yaml
@@ -17,6 +18,7 @@ done
 
 for CLUSTER in ${CLUSTER1_NAME} ${CLUSTER2_NAME} ${ROOTCA_NAME} ${CLUSTER3_NAME}
 do
+  echo "Deleting IstioMC resources on" $CLUSTER 
   kubectl --context ${CLUSTER} delete ServiceEntry,Gateway,DestinationRule,VirtualService --all
 done
 

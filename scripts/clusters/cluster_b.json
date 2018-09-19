@@ -1,6 +1,6 @@
 {
     "id": "clusterb.myorg",
-    "gatewayIP": "169.61.233.13",
+    "gatewayIP": "169.62.129.91",
     "gatewayPort": 80,
     "agentIP": "localhost",
     "agentPort": 8999,
@@ -8,7 +8,7 @@
     "peers":[
         { 
             "id": "clusterc.myorg",
-            "GatewayIP": "169.62.214.228",
+            "GatewayIP": "169.62.214.226",
             "GatewayPort":80,
             "AgentIP":"localhost",
             "AgentPort":8997,
