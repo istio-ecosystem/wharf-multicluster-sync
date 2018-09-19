@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-standalone-citadel
+  namespace: istio-system
+spec:
+  type: ExternalName
+  externalName: __ROOTCA_HOST__
+  selector: {}
+---
+# Source: istio/charts/security/templates/deployment.yaml
+# istio CA watching all namespaces
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: istio-citadel
+  namespace: istio-system
+  labels:
+    app: security
+    chart: security-1.0.0
+    release: istio
+    heritage: Tiller
+    istio: citadel
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        istio: citadel
+      annotations:
+        sidecar.istio.io/inject: "false"
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+    spec:
+      serviceAccountName: istio-citadel-service-account-__CLUSTERNAME__
+      containers:
+        - name: citadel
+          image: "docker.io/istio/citadel:1.0.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --append-dns-names=true
+            - --citadel-storage-namespace=istio-system
+            - --grpc-port=8060
+            - --self-signed-ca=false
+            - --signing-cert=/etc/cacerts/ca-cert.pem
+            - --signing-key=/etc/cacerts/ca-key.pem
+            - --root-cert=/etc/cacerts/root-cert.pem
+            - --cert-chain=/etc/cacerts/cert-chain.pem
+            - --upstream-ca-address=istio-standalone-citadel:8060
+            - --org=test-org #customize ME
+            - --requested-ca-cert-ttl=48h
+            - --workload-cert-ttl=21h
+            # - --append-dns-names=true
+            # - --grpc-port=8060
+            # - --grpc-hostname=citadel
+            # - --self-signed-ca=true
+            # - --citadel-storage-namespace=istio-system
+          volumeMounts:
+          - name: cacerts
+            mountPath: /etc/cacerts
+            readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+      volumes:
+      - name: cacerts
+        secret:
+          secretName: cacerts
+          optional: true
+            
+      affinity:      
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+
+---
+
+#
+#
+# the following already exists; it needs to be simply modified withh __CLUSTERNAME__
+#
+#
+#
+
+# Source: istio/charts/security/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istio-citadel-service-account-__CLUSTERNAME__
+  namespace: istio-system
+  labels:
+    app: security
+    chart: security-1.0.1
+    heritage: Tiller
+    release: RELEASE-NAME
+---
+# Source: istio/charts/security/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-citadel-istio-system
+  labels:
+    app: security
+    chart: security-1.0.1
+    heritage: Tiller
+    release: RELEASE-NAME
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-citadel-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istio-citadel-service-account-__CLUSTERNAME__
+    namespace: istio-system

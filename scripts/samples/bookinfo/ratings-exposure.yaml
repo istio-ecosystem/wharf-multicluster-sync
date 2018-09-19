@@ -1,0 +1,9 @@
+# Expose the "ratings" service
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: ratings
+spec:
+  exposed:
+  - name: ratings
+    port: 9080

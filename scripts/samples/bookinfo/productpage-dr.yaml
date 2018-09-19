@@ -1,0 +1,31 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: dest-rule-productpage-default-notls
+spec:
+  host: productpage.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: dest-rule-details-default-notls
+spec:
+  host: details.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+
+---
+#apiVersion: networking.istio.io/v1alpha3
+#kind: DestinationRule
+#metadata:
+#  name: dest-rule-reviews-default-notls
+#spec:
+#  host: reviews.default.svc.cluster.local
+#  trafficPolicy:
+#    tls:
+#      mode: ISTIO_MUTUAL
+

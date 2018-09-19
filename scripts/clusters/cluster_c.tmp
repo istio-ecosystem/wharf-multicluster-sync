@@ -1,0 +1,8 @@
+{
+    "id": "clusterc.myorg",
+    "gatewayIP": "__CLUSTERC_IP__",
+    "gatewayPort": 80,
+    "agentIP": "localhost",
+    "agentPort": 8997,
+    "TrustedPeers": ["clusterb.myorg"]
+}

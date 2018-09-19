@@ -1,0 +1,54 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  creationTimestamp: null
+  name: dest-rule-server-default-notls
+#MB  namespace: default
+spec:
+  host: server.default.svc.cluster.local
+  subsets:
+  - name: notls
+    trafficPolicy:
+      tls: {}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  creationTimestamp: null
+  name: istio-ingressgateway-server-default
+#MB  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - server.default.svc.cluster.local
+    port:
+      name: server-default-80
+      number: 80
+      protocol: TLS
+    tls: {}
+#      mode: PASSTHROUGH #MBMB SIMPLE
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  creationTimestamp: null
+  name: ingressgateway-to-server-default
+#MB  namespace: default
+spec:
+  gateways:
+  - istio-ingressgateway-server-default
+  hosts:
+  - server.default.svc.cluster.local
+  tls:
+  - match:
+    - port: 80
+      sniHosts:
+      - server.default.svc.cluster.local
+    route:
+    - destination:
+        host: server.default.svc.cluster.local #MBMB
+        port:
+          number: 80
+        subset: notls

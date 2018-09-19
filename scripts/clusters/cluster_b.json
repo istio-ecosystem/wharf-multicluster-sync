@@ -1,0 +1,18 @@
+{
+    "id": "clusterb.myorg",
+    "gatewayIP": "169.61.233.13",
+    "gatewayPort": 80,
+    "agentIP": "localhost",
+    "agentPort": 8999,
+    "TrustedPeers": ["clustera.myorg"],
+    "peers":[
+        { 
+            "id": "clusterc.myorg",
+            "GatewayIP": "169.62.214.228",
+            "GatewayPort":80,
+            "AgentIP":"localhost",
+            "AgentPort":8997,
+            "TrustedPeers": ["clusterb.myorg"]
+        }
+    ]
+}
