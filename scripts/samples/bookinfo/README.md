@@ -1,7 +1,7 @@
 
-After setting up 4 cluster, one for the root CA and the other threes
-named cluster_a, cluster_b, and cluster_c for Bookinfo services
-following the following steps:
+After setting up 4 clusters, one for the root CA and the other three clusters
+(named cluster_a, cluster_b, and cluster_c) for Bookinfo services
+follow these steps:
 
 
 # Demo
