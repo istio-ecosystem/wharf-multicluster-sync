@@ -154,6 +154,7 @@ func (r *reconciler) ModifyMulticlusterConfig(config istiomodel.Config) (*Config
 			return nil, fmt.Errorf("Expected to modify Istio config but %#v makes an unknown config %#v", config, istioConfig)
 		} else {
 			if !reflect.DeepEqual(istioConfig.Spec, orig.Spec) {
+				istioConfig.ResourceVersion = orig.ResourceVersion
 				outModifications = append(outModifications, istioConfig)
 			}
 		}
@@ -163,7 +164,9 @@ func (r *reconciler) ModifyMulticlusterConfig(config istiomodel.Config) (*Config
 	svcModifications := make([]kube_v1.Service, 0)
 	for _, svc := range svcs {
 		orig, ok := origSvcs[svcIndex(svc)]
+		svc.Spec.ClusterIP = orig.Spec.ClusterIP // Immutable field can't be changed
 		if !ok || !reflect.DeepEqual(svc.Spec, orig.Spec) {
+			svc.ResourceVersion = orig.ResourceVersion
 			svcModifications = append(svcModifications, svc)
 		}
 	}
@@ -225,7 +228,7 @@ func indexServices(svcs []kube_v1.Service, indexFunc func(config kube_v1.Service
 }
 
 func svcIndex(config kube_v1.Service) string {
-	return fmt.Sprintf("%s+%s+%s", config.Kind, config.Namespace, config.Name)
+	return fmt.Sprintf("Service+%s+%s", config.Namespace, config.Name)
 }
 
 func getNamespace(config istiomodel.Config) string {
