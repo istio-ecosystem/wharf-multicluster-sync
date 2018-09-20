@@ -40,8 +40,6 @@ var (
 	clusterConfig *agent.ClusterConfig
 
 	configsMgmt *agent.ConfigsManagement
-
-	bindingsConnMode = map[string]string{}
 )
 
 func main() {
@@ -115,24 +113,18 @@ func main() {
 		switch ev {
 		case model.EventAdd:
 			log.Debugf("RemoteServiceBinding resource was added. Key: %s", configKey)
-			bindingsConnMode[configKey] = connMode
-			configsMgmt.McConfigAdded(config)
+			if connMode == agent.ConnectionModeLive {
+				configsMgmt.McConfigAdded(config)
+			}
 		case model.EventDelete:
 			log.Debugf("RemoteServiceBinding resource was deleted. Key: %s", configKey)
-			bindingsConnMode[configKey] = ""
-			configsMgmt.McConfigDeleted(config)
+			if connMode == agent.ConnectionModeLive {
+				configsMgmt.McConfigDeleted(config)
+			}
 		case model.EventUpdate:
 			log.Debugf("RemoteServiceBinding resource was updated. Key: %s", configKey)
-			if connMode != bindingsConnMode[configKey] {
-				log.Debugf("Connection mode switched to: %s", connMode)
-				//Mode changed
-				switch connMode {
-				case agent.ConnectionModeLive:
-					configsMgmt.McConfigAdded(config)
-				case agent.ConnectionModePotential:
-					configsMgmt.McConfigDeleted(config)
-				}
-				bindingsConnMode[configKey] = connMode
+			if connMode == agent.ConnectionModeLive {
+				configsMgmt.McConfigModified(config)
 			}
 		}
 		log.Debugf("Config store now has %d RemoteServiceBinding entries", len(mcStore.RemoteServiceBindings()))
