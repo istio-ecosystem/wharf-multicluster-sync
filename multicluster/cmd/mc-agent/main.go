@@ -112,17 +112,17 @@ func main() {
 		connMode := config.Labels[agent.ConnectionModeKey]
 		switch ev {
 		case model.EventAdd:
-			log.Debugf("RemoteServiceBinding resource was added. Key: %s", configKey)
+			log.Debugf("RemoteServiceBinding resource was added. Key: %s Mode: %s", configKey, connMode)
 			if connMode == agent.ConnectionModeLive {
 				configsMgmt.McConfigAdded(config)
 			}
 		case model.EventDelete:
-			log.Debugf("RemoteServiceBinding resource was deleted. Key: %s", configKey)
+			log.Debugf("RemoteServiceBinding resource was deleted. Key: %s Mode: %s", configKey, connMode)
 			if connMode == agent.ConnectionModeLive {
 				configsMgmt.McConfigDeleted(config)
 			}
 		case model.EventUpdate:
-			log.Debugf("RemoteServiceBinding resource was updated. Key: %s", configKey)
+			log.Debugf("RemoteServiceBinding resource was updated. Key: %s Mode: %s", configKey, connMode)
 			if connMode == agent.ConnectionModeLive {
 				configsMgmt.McConfigModified(config)
 			}
