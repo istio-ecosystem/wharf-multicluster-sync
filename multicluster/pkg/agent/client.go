@@ -110,7 +110,7 @@ func (c *Client) update() {
 		return
 	}
 
-	// TODO: Below is an unefficient implemntation to handle update which first delete the RSB
+	// TODO: Below is an unefficient implementation to handle update which first delete the RSB
 	// and its Istio configs and then create new ones with the updated info.
 
 	oldRsb := c.remoteServiceBinding()
@@ -229,8 +229,10 @@ func getConnectionMode(peerID string) string {
 	// for each cluster.
 	mode := os.Getenv(modeEnvKey)
 	if mode != "" {
+		log.Debugf("Env var %q defined, creating RSB as %s\n",  modeEnvKey, mode)
 		return mode
 	}
-
+	
+	log.Debugf("Env var %q NOT defined, DEFAULTING RSB mode to %s\n",  modeEnvKey, ConnectionModeLive)
 	return ConnectionModeLive
 }

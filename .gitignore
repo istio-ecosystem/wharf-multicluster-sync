@@ -10,5 +10,8 @@ multicluster/pkg/test/generated/*.yaml
 # Binaries we build
 multicluster/cmd/mc-tool/mc-tool
 
+# Logs we generate
+scripts/clusters/*.log
+
 # Emacs temp files
 *~
