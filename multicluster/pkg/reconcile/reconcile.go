@@ -104,42 +104,9 @@ func (r *reconciler) AddMulticlusterConfig(newconfig istiomodel.Config) (*Config
 // and returns the new and modified Istio configurations needed to implement the desired multicluster config.
 func (r *reconciler) ModifyMulticlusterConfig(config istiomodel.Config) (*ConfigChanges, error) {
 
-	istioConfigs, svcs, err := model.ConvertBindingsAndExposures2(
-		[]istiomodel.Config{config}, r.clusterInfo, r.store, r.services)
-	if err != nil {
-		return nil, err
-	}
-
-	outModifications := make([]istiomodel.Config, 0)
-	for _, istioConfig := range istioConfigs {
-		orig, ok := r.store.Get(istioConfig.Type, istioConfig.Name, getNamespace(istioConfig))
-		if !ok {
-			return nil, fmt.Errorf("Expected to modify Istio config but %#v makes an unknown config %#v", config, istioConfig)
-		} else {
-			if !reflect.DeepEqual(istioConfig.Spec, orig.Spec) {
-				istioConfig.ResourceVersion = orig.ResourceVersion
-				outModifications = append(outModifications, istioConfig)
-			}
-		}
-	}
-
-	origSvcs := indexServices(r.services, svcIndex)
-	svcModifications := make([]kube_v1.Service, 0)
-	for _, svc := range svcs {
-		orig, ok := origSvcs[svcIndex(svc)]
-		svc.Spec.ClusterIP = orig.Spec.ClusterIP // Immutable field can't be changed
-		if !ok || !reflect.DeepEqual(svc.Spec, orig.Spec) {
-			svc.ResourceVersion = orig.ResourceVersion
-			svcModifications = append(svcModifications, svc)
-		}
-	}
-
-	return &ConfigChanges{
-		Modifications: outModifications,
-		Kubernetes: &KubernetesChanges{
-			Modifications: svcModifications,
-		},
-	}, nil
+	// Modifying RSB or SEP usually only modifies Istio config, but it might generate new if Istio config was deleted.
+	// So don't bother validating that Istio and K8s Services exist, just do what "Add" would do.
+	return r.AddMulticlusterConfig(config)
 }
 
 // DeleteMulticlusterConfig takes an Istio config store and a deleted RemoteServiceBinding or ServiceExpositionPolicy
