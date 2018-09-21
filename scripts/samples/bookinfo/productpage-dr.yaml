@@ -1,7 +1,7 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
-  name: dest-rule-productpage-default-notls
+  name: dest-rule-productpage-default
 spec:
   host: productpage.default.svc.cluster.local
   trafficPolicy:
@@ -11,7 +11,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
-  name: dest-rule-details-default-notls
+  name: dest-rule-details-default
 spec:
   host: details.default.svc.cluster.local
   trafficPolicy:
