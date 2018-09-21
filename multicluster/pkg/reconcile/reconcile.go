@@ -45,43 +45,6 @@ type Reconciler interface {
 	DeleteMulticlusterConfig(config istiomodel.Config) (*ConfigChanges, error)
 }
 
-// DEPRECATED AddMulticlusterConfig takes an Istio config store and a new RemoteServiceBinding or ServiceExpositionPolicy
-// and returns the new and modified Istio configurations needed to implement the desired multicluster config.
-func AddMulticlusterConfig(store istiomodel.ConfigStore, newconfig istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, []istiomodel.Config, error) {
-	r := NewReconciler(store, []kube_v1.Service{}, ci)
-	mods, err := r.AddMulticlusterConfig(newconfig)
-	if err != nil {
-		return []istiomodel.Config{}, []istiomodel.Config{}, err
-	}
-
-	return mods.Additions, mods.Modifications, nil
-}
-
-// DEPRECATED ModifyMulticlusterConfig takes an Istio config store and a modified RemoteServiceBinding or ServiceExpositionPolicy
-// and returns the new and modified Istio configurations needed to implement the desired multicluster config.
-func ModifyMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, error) {
-	r := NewReconciler(store, []kube_v1.Service{}, ci)
-	mods, err := r.ModifyMulticlusterConfig(config)
-	if err != nil {
-		return []istiomodel.Config{}, err
-	}
-
-	return mods.Modifications, nil
-}
-
-// DEPRECATED DeleteMulticlusterConfig takes an Istio config store and a deleted RemoteServiceBinding or ServiceExpositionPolicy
-// and returns the Istio configurations that should be removed to disable the multicluster config.
-// Only the Type, Name, and Namespace of the output configs is guarenteed usable.
-func DeleteMulticlusterConfig(store istiomodel.ConfigStore, config istiomodel.Config, ci model.ClusterInfo) ([]istiomodel.Config, error) {
-	r := NewReconciler(store, []kube_v1.Service{}, ci)
-	mods, err := r.DeleteMulticlusterConfig(config)
-	if err != nil {
-		return []istiomodel.Config{}, err
-	}
-
-	return mods.Deletions, nil
-}
-
 func NewReconciler(store istiomodel.ConfigStore, services []kube_v1.Service, clusterInfo model.ClusterInfo) Reconciler {
 	return &reconciler{
 		store:       store,
