@@ -48,6 +48,8 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 			store: "reviews-exposure-starter.yaml"},
 		{in: "reviews-binding-three-versions.yaml",
 			out: "reviews-binding-three-versions.yaml"},
+		{in: "ratings-binding.yaml",
+			out: "ratings-binding.yaml"},
 	}
 
 	for _, tc := range tt {

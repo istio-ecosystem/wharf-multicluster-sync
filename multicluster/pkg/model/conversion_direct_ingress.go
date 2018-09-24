@@ -71,7 +71,7 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 
 // uniqueifyIstio removes duplicates (e.g. DRs for the same host exposed under different aliases),
 // favoring duplicates later in the sequence.
-func uniquifyIstio(configs []istiomodel.Config) ([]istiomodel.Config) {
+func uniquifyIstio(configs []istiomodel.Config) []istiomodel.Config {
 	unique := make([]istiomodel.Config, 0)
 	names := make(map[string]int) // map of type+namespace+name -> position
 	for _, config := range configs {
@@ -84,13 +84,26 @@ func uniquifyIstio(configs []istiomodel.Config) ([]istiomodel.Config) {
 			unique = append(unique, config)
 		}
 	}
-	
+
 	return unique
 }
 
-// uniqueifyServices TODO merge configs that will conflict when presented to Kubernetes
-func uniquifyServices(configs []kube_v1.Service) ([]kube_v1.Service) {
-	return configs
+// uniqueifyServices
+func uniquifyServices(configs []kube_v1.Service) []kube_v1.Service {
+	unique := make([]kube_v1.Service, 0)
+	names := make(map[string]int) // map of namespace+name -> position
+	for _, config := range configs {
+		key := fmt.Sprintf("%s+%s", config.Namespace, config.Name)
+		pos, ok := names[key]
+		if ok {
+			unique[pos] = config
+		} else {
+			names[key] = len(unique)
+			unique = append(unique, config)
+		}
+	}
+
+	return unique
 }
 
 func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, []kube_v1.Service, error) {
@@ -178,8 +191,8 @@ func serviceToDestinationRuleDirectIngress(rs *v1alpha1.RemoteServiceBinding_Rem
 func serviceToKubernetesServiceDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *kube_v1.Service {
 	return &kube_v1.Service{
 		TypeMeta: meta_v1.TypeMeta{
-			Kind:        "Service",
-			APIVersion:     "v1",
+			Kind:       "Service",
+			APIVersion: "v1",
 		},
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:        remoteServiceName(rs),
