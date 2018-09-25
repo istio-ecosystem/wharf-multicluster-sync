@@ -19,13 +19,14 @@ typically 31380.
 
 Use the browser to go to IP:31380/productpage.  Show that Productpage does not have access to reviews.
 
-Do `kubectl --context ${CLUSTER2_NAME} create  -f ./reviews-exposure.yaml`
+Do `kubectl --context $CLUSTER2 create  -f ./reviews-exposure.yaml`
 
 3. Adding reviews v2 and v3 to cluster_b and ratings to cluster_c.
 
 ```
- ./setup_demo_2.sh
- kubectl --context ${CLUSTER3_NAME} apply -f ratings-exposure.yaml
+kubectl --context $CLUSTER3 apply  -f bookinfo-ratings.yaml
+kubectl --context ${CLUSTER3} apply -f ratings-exposure.yaml
+ kubectl --context ${CLUSTER2} apply  -f bookinfo-reviews-v2.yaml
 ```
 
 4. Selecting a subset of reviews to be used.
