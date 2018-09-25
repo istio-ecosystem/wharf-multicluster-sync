@@ -25,8 +25,8 @@ Do `kubectl --context $CLUSTER2 create  -f ./reviews-exposure.yaml`
 
 ```
 kubectl --context $CLUSTER3 apply  -f bookinfo-ratings.yaml
-kubectl --context ${CLUSTER3} apply -f ratings-exposure.yaml
- kubectl --context ${CLUSTER2} apply  -f bookinfo-reviews-v2.yaml
+kubectl --context $CLUSTER3 apply -f ratings-exposure.yaml
+kubectl --context $CLUSTER2 apply  -f bookinfo-reviews-v2.yaml
 ```
 
 4. Selecting a subset of reviews to be used.
