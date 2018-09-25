@@ -1,0 +1,11 @@
+# Expose the "reviews" service
+apiVersion: multicluster.istio.io/v1alpha1
+kind: ServiceExpositionPolicy
+metadata:
+  name: reviews
+spec:
+  exposed:
+  - name: reviews
+    port: 9080
+    clusters:
+    - cluster-1
