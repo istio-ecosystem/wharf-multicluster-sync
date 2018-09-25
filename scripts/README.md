@@ -16,6 +16,9 @@ export CLUSTER1_NAME="free1"
 export CLUSTER2_NAME="test-multizone"
 export ROOTCA_NAME="istio-test-paid"
 export CLUSTER3_NAME="istio-test-paid2"
+export CLUSTER1=$CLUSTER1_NAME
+export CLUSTER2=$CLUSTER2_NAME
+export CLUSTER3=$CLUSTER3_NAME
 
 export CLUSTER1_ID="test-c1"
 export CLUSTER2_ID="test-c2"
@@ -34,4 +37,4 @@ In addition to the information about clusters being used, these directories are 
 * DEMODIR: contains a clusters directpory that has cluster config files
 * AGENTDIR: where pilot agents are located
 
-There are two sample cases. For the demo, go to ```samples/bookinfo``` and follow the instructions.
+There are two sample cases. For the demo, go to [samples/bookinfo](samples/bookinfo) and follow the instructions.

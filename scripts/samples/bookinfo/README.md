@@ -9,16 +9,26 @@ follow these steps:
 1. Basic Bookinfo with details and productpage on cluster_a and reviews version v1 on cluster_b.
 
 ```
- ./create_demo_1.sh
+ ./setup_demo_1.sh
 ```
 
-2. Adding reviews v2 and v3 to cluster_b and ratings to cluster_c.
+2. Determine the IP address and Port.  Use `kubectl --context $CLUSTER1 get services -n istio-system`.
+The IP address is the public address of istio-ingressgateway.  If it does not have an address use
+`bx cs workers $CLUSTER1` and use the public address there.  The port is the port from istio-ingressgateway,
+typically 31380.
+
+Use the browser to go to IP:31380/productpage.  Show that Productpage does not have access to reviews.
+
+Do `kubectl --context ${CLUSTER2_NAME} create  -f ./reviews-exposure.yaml`
+
+3. Adding reviews v2 and v3 to cluster_b and ratings to cluster_c.
 
 ```
- ./create_demo_2.sh
+ ./setup_demo_2.sh
+ kubectl --context ${CLUSTER3_NAME} apply -f ratings-exposure.yaml
 ```
 
-3. Selecting a subset of reviews to be used.
+4. Selecting a subset of reviews to be used.
 
 ```
  ./ceate_demo_3.sh
@@ -34,4 +44,4 @@ follow these steps:
 
 # Debug
 
-run config_dump.sh and inspect the output in config_dump.json. It contains the info on all rekated resources.
+run `config_dump.sh` and inspect the output in _config_dump.json_. It contains the info on all related resources.
