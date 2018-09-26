@@ -6,7 +6,13 @@ metadata:
 spec:
   exposed:
   - name: my-service
-    ports:
-    - 80 # Required, because without this it would be ambiguous
+    port:
+    - 80
+    clusters:
+    - acceptor-cluster-1
+  - name: my-service
+    alias: my-service-https
+    port:
+    - 443
     clusters:
     - acceptor-cluster-1
