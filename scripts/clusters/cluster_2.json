@@ -12,7 +12,6 @@
             "GatewayPort":80,
             "AgentIP":"localhost",
             "AgentPort":8997,
-            "TrustedPeers": ["cluster2.myorg"]
         }
     ]
 }

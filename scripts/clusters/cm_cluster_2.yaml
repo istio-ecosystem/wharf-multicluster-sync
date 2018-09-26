@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-mc
+  # TODO Use istio-system namespace
+  namespace: default
+data:
+  cluster.yml: |-
+    ID: cluster2.myorg
+    GatewayIP: "169.62.129.93"
+    GatewayPort: 80
+    AgentIP: localhost
+    AgentPort: 8999
+    peers:
+    - id id: cluster3.myorg
+      GatewayIP: "169.62.214.226"
+      GatewayPort: 80
+      AgentIP: localhost
+      AgentPort: 8997
+
+  creationMode: live
