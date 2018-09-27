@@ -5,11 +5,11 @@ metadata:
   # TODO Use istio-system namespace
   namespace: default
 data:
-  cluster.yml: |-
-    ID: cluster3.myorg
-    GatewayIP: "169.62.214.226"
-    GatewayPort: 80
-    AgentIP: localhost
-    AgentPort: 8997
-
-  creationMode: live
+  config.yaml: |
+      ID: cluster3.myorg
+      GatewayIP: 169.62.214.226
+      GatewayPort: 80
+      AgentPort: 8999
+      TrustedPeers:
+      - cluster2.myorg
+      Peers: []
