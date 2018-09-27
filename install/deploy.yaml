@@ -121,7 +121,7 @@ spec:
       serviceAccountName: multi-cluster-agent-service-account
       containers:
         - name: mcagent
-          image: "docker.io/ymesika/mcagent:develop"
+          image: "docker.io/mc/mcagent:develop"
           imagePullPolicy: Always
           ports:
           - containerPort: 8999
