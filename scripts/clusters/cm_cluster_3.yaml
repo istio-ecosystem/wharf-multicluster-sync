@@ -12,4 +12,4 @@ data:
       AgentPort: 8999
       TrustedPeers:
       - cluster2.myorg
-      Peers: []
+      WatchedPeers: []

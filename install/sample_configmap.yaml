@@ -12,7 +12,7 @@ data:
       GatewayPort: 80
       AgentPort: 8999
       TrustedPeers: []
-      Peers:
+      WatchedPeers:
       - ID: cluster-b
         GatewayIP: 159.122.217.84
         GatewayPort: 80

@@ -11,7 +11,7 @@ data:
       GatewayPort: 80
       AgentPort: 8999
       TrustedPeers: []
-      Peers:
+      WatchedPeers:
       - ID: cluster2.myorg
         GatewayIP: 169.62.129.93
         GatewayPort: 80

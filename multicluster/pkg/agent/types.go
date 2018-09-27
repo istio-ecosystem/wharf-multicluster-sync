@@ -34,7 +34,7 @@ type ClusterConfig struct {
 
 	ConnectionMode string `json:"connectionMode" yaml:"ConnectionMode"`
 
-	Peers        []ClusterConfig `json:"peers,omitempty" yaml:"Peers,omitempty"`
+	Peers        []ClusterConfig `json:"peers,omitempty" yaml:"WatchedPeers,omitempty"`
 	TrustedPeers []string        `json:"trustedPeers,omitempty" yaml:"TrustedPeers,omitempty"`
 }
 
