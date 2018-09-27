@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 
 	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
@@ -34,6 +36,7 @@ var (
 	kubeconfig string
 	context    string
 	configJSON string
+	configYAML string
 
 	mcStore       mcmodel.MCConfigStore
 	istioStore    model.ConfigStore
@@ -45,13 +48,16 @@ var (
 func main() {
 	flag.Parse()
 
-	if configJSON == "" {
-		log.Error("Cluster configuration JSON file must be provided with the -configJson flag")
-		return
+	// Load the cluster config from the provided json or yaml file
+	var err error
+	if configJSON != "" {
+		clusterConfig, err = loadJsonConfig(configJSON)
+	} else if configYAML != "" {
+		clusterConfig, err = loadYamlConfig(configYAML)
+	} else {
+		err = fmt.Errorf("Cluster configuration file must be provided with the -configJson or -configYaml flag")
 	}
 
-	// Load the cluster config from the provided json file
-	clusterConfig, err := loadConfig(configJSON)
 	if err != nil {
 		log.Errora(err)
 		return
@@ -79,11 +85,11 @@ func main() {
 	}
 
 	// Register the Multi-Cluster CRDs if they aren't already registered
-	err = cl.RegisterResources()
-	if err != nil {
-		log.Errora(err)
-		return
-	}
+	// err = cl.RegisterResources()
+	// if err != nil {
+	// 	log.Errora(err)
+	// 	return
+	// }
 
 	// Setting up a controller for the configured namespace to periodically watch for changes
 	ctl := mccrd.NewController(cl, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
@@ -177,17 +183,13 @@ func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
 		return nil, err
 	}
 
-	if err = configClient.RegisterResources(); err != nil {
-		return nil, err
-	}
-
 	ctl := crd.NewController(configClient, kube.ControllerOptions{WatchedNamespace: namespace, ResyncPeriod: resyncPeriod})
 
 	return ctl, nil
 }
 
-// loadConfig will load the cluster configuration from the provided JSON file
-func loadConfig(file string) (*agent.ClusterConfig, error) {
+// loadJsonConfig will load the cluster configuration from the provided JSON file
+func loadJsonConfig(file string) (*agent.ClusterConfig, error) {
 	jsonFile, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -197,6 +199,24 @@ func loadConfig(file string) (*agent.ClusterConfig, error) {
 	var config agent.ClusterConfig
 	bytes, _ := ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+// loadYamlConfig will load the cluster configuration from the provided YAML file
+func loadYamlConfig(file string) (*agent.ClusterConfig, error) {
+	yamlFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer yamlFile.Close()
+
+	var config agent.ClusterConfig
+	bytes, _ := ioutil.ReadAll(yamlFile)
+	err = yaml.Unmarshal(bytes, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +234,7 @@ func init() {
 	}
 
 	flag.StringVar(&configJSON, "configJson", "", "Config JSON file to use for the agent configuration")
+	flag.StringVar(&configYAML, "configYaml", "", "Config YAML file to use for the agent configuration")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&context, "context", "", "Kubeconfig context to be used. Only required if out-of-cluster.")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch. Default (or empty string) is all namespaces.")
