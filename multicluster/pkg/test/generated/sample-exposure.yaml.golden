@@ -4,11 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     connection: live
-  name: -services
+  name: cluster-b-services
   namespace: mynamespace
 spec:
   remote:
-  - services:
+  - cluster: cluster-b
+    services:
     - alias: FooA
       name: FooA
       namespace: mynamespace

@@ -1,0 +1,28 @@
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  creationTimestamp: null
+  labels:
+    connection: live
+  name: cluster-c-services
+  namespace: default
+spec:
+  remote:
+  - cluster: cluster-c
+    services:
+    - alias: ratings
+      name: ratings
+apiVersion: multicluster.istio.io/v1alpha1
+kind: RemoteServiceBinding
+metadata:
+  creationTimestamp: null
+  labels:
+    connection: live
+  name: cluster-d-services
+  namespace: default
+spec:
+  remote:
+  - cluster: cluster-d
+    services:
+    - alias: ratings
+      name: ratings

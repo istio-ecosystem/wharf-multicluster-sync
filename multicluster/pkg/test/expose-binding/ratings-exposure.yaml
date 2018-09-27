@@ -7,4 +7,5 @@ spec:
   exposed:
   - name: ratings
     clusters:
-    - acceptor-cluster
+    - cluster-a
+    - cluster-b

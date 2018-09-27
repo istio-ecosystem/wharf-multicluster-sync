@@ -8,9 +8,11 @@ package agent
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -30,33 +32,43 @@ import (
 // TestServiceToBinding tests agent.exposedServicesToBinding()
 func TestServiceToBinding(t *testing.T) {
 	tt := []struct {
-		in  string
-		out string
+		config string            // Config of binding cluster
+		in     map[string]string // Map of cluster to exposed svcs on that cluster
+		out    string            // YAML of RSB(s) produced
 	}{
-		{in: "sample-exposure.yaml",
+		{config: "cluster_a.json",
+			in: map[string]string{
+				"cluster-b": "sample-exposure.yaml",
+			},
 			out: "sample-exposure.yaml"},
-		{in: "rshriram-demo-exposure.yaml",
+		{config: "cluster_a.json",
+			in: map[string]string{
+				"cluster-b": "rshriram-demo-exposure.yaml",
+			},
 			out: "rshriram-demo-exposure.yaml"},
-		{in: "reviews-exposure-both.yaml",
+		{config: "cluster_a.json",
+			in: map[string]string{
+				"cluster-b": "reviews-exposure-both.yaml",
+			},
 			out: "reviews-exposure.yaml"},
+		{config: "cluster_b_listens_cd.json",
+			in: map[string]string{
+				"cluster-c": "ratings-exposure.yaml",
+				"cluster-d": "ratings-exposure.yaml",
+			},
+			out: "ratings-exposure-both-cd.yaml"},
 		// Commenting this one because no service is exposed therefore
 		// no RSB is generated
 		// {in: "ratings-exposure.yaml",
 		// 	out: "ratings-exposure.yaml"},
 	}
 
-	clusterConfig, err := loadConfig("../test/mc-agent/cluster_a.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	for _, tc := range tt {
-		t.Run(tc.in, func(t *testing.T) {
-			in, err := os.Open("../test/expose-binding/" + tc.in)
+		t.Run(tc.out, func(t *testing.T) {
+			clusterConfig, err := loadConfig("../test/mc-agent/" + tc.config)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer in.Close() // nolint: errcheck
 
 			outFilename := "../test/generated/" + tc.out
 			out, err := os.Create(outFilename)
@@ -65,8 +77,18 @@ func TestServiceToBinding(t *testing.T) {
 			}
 			defer out.Close() // nolint: errcheck
 
-			if err := readAndConvert(in, out, clusterConfig); err != nil {
-				t.Fatalf("Unexpected error converting configs: %v", err)
+			// Sort the keys so output for test purposes deterministic
+			for _, peerName := range sortedStringKeys(tc.in) {
+				inName := tc.in[peerName]
+				in, err := os.Open("../test/expose-binding/" + inName)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer in.Close() // nolint: errcheck
+
+				if err := readAndConvert(in, out, clusterConfig, peerName); err != nil {
+					t.Fatalf("Unexpected error converting configs: %v", err)
+				}
 			}
 
 			util.CompareYAML(outFilename, t)
@@ -74,8 +96,22 @@ func TestServiceToBinding(t *testing.T) {
 	}
 }
 
+func sortedStringKeys(in map[string]string) []string {
+	out := make([]string, 0)
+	for key, _ := range in {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *ClusterConfig) error {
+func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *ClusterConfig, peerName string) error {
+	peer, err := lookupPeer(peerName, clusterConfig)
+	if err != nil {
+		return err
+	}
+
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
@@ -94,21 +130,23 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *ClusterCo
 
 	svcs := server.exposedServices(clusterConfig.ID)
 
-	var config ClusterConfig
-	var peer ClusterConfig
 	var istioStore istiomodel.ConfigStore
-	_ = configs
-	client, err := NewClient(&config, &peer, &store, istioStore)
+	client, err := NewClient(clusterConfig, peer, &store, istioStore)
 	if err != nil {
 		return err
 	}
 
 	exposedSvcs := ExposedServices{Services: svcs}
 	binding := client.createRemoteServiceBinding(&exposedSvcs, ConnectionModeLive)
+	if binding != nil {
+		if err := mcmodel.RemoteServiceBinding.Validate(binding.Name, binding.Namespace, binding.Spec); err != nil {
+			return multierror.Prefix(err, "validation error:")
+		}
 
-	err = writeMCYAMLOutput(mcmodel.MultiClusterConfigTypes, []istiomodel.Config{*binding}, writer)
-	if err != nil {
-		return err
+		err = writeMCYAMLOutput(mcmodel.MultiClusterConfigTypes, []istiomodel.Config{*binding}, writer)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -138,6 +176,16 @@ func writeMCYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomo
 	}
 
 	return nil
+}
+
+func lookupPeer(peerName string, clusterConfig *ClusterConfig) (*ClusterConfig, error) {
+	for _, peer := range clusterConfig.Peers {
+		if peer.ID == peerName {
+			return &peer, nil
+		}
+	}
+
+	return nil, fmt.Errorf("No peer %q in %v", peerName, clusterConfig)
 }
 
 func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {

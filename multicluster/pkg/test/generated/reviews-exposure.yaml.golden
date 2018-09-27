@@ -4,11 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     connection: live
-  name: -services
+  name: cluster-b-services
   namespace: default
 spec:
   remote:
-  - services:
+  - cluster: cluster-b
+    services:
     - alias: reviews
       name: reviews
       port: 9080
