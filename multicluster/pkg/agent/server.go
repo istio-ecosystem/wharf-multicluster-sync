@@ -31,7 +31,7 @@ func NewServer(config *ClusterConfig, store mcmodel.MCConfigStore) (*Server, err
 		httpServer: http.Server{
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,
-			Addr:         fmt.Sprintf("%s:%d", config.AgentIP, config.AgentPort),
+			Addr:         fmt.Sprintf(":%d", config.AgentPort),
 			Handler:      router,
 		},
 		store:  store,
