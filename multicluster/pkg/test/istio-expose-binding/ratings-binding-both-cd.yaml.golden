@@ -2,15 +2,18 @@ apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
   annotations:
-    multicluster.istio.io/provenance: default.cluster-d-services
+    multicluster.istio.io/provenance: default.cluster-c-services
   creationTimestamp: null
   name: service-entry-ratings
   namespace: default
 spec:
   endpoints:
-  - address: 255.255.255.255
+  - address: 1.2.3.4
     ports:
-      http: 8080
+      http: 80
+  - address: 1.2.3.5
+    ports:
+      http: 80
   hosts:
   - ratings.default.svc.cluster.local
   ports:

@@ -27,23 +27,17 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 	out := make([]istiomodel.Config, 0)
 	outServices := make([]kube_v1.Service, 0)
 
-	// Construct map of hostname -> DestinationRule
-	drs := make(map[string]*istiomodel.Config)
-	drConfigs, err := store.List(istiomodel.DestinationRule.Type, meta_v1.NamespaceDefault)
+	// Construct map of hostname -> DestinationRule (needed for merging for subsets)
+	drs, err := mapHostnameToDestinationRule(store)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, dr := range drConfigs {
-		spec := dr.Spec.(*v1alpha3.DestinationRule)
 
-		// Deep copy some of DR so we don't modify the original while merging for subsets
-		newDR := dr
-		newSpec := *spec
-		newSpec.Subsets = make([]*v1alpha3.Subset, len(newSpec.Subsets))
-		copy(newSpec.Subsets, spec.Subsets)
-		newDR.Spec = &newSpec
 
-		drs[spec.Host] = &newDR
+	// Construct map of hostname -> ServiceEntry (needed for merging for multiple endpoints) 
+	vss, err := mapHostnameToServiceEntry(store)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Process each Multicluster Config SEP or RSB
@@ -53,7 +47,7 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 		var err error
 		rsb, ok := mc.Spec.(*v1alpha1.RemoteServiceBinding)
 		if ok {
-			istio, svcs, err = convertRSBDirectIngress(mc, rsb, ci)
+			istio, svcs, err = convertRSBDirectIngress(mc, rsb, vss, ci)
 		}
 		sep, ok := mc.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		if ok {
@@ -67,6 +61,61 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 	}
 
 	return uniquifyIstio(out), uniquifyServices(outServices), nil
+}
+
+// Construct map of hostname -> DestinationRule
+func mapHostnameToDestinationRule(store istiomodel.ConfigStore) (map[string]*istiomodel.Config, error) {
+	drs := make(map[string]*istiomodel.Config)
+	drConfigs, err := store.List(istiomodel.DestinationRule.Type, meta_v1.NamespaceDefault)
+	if err != nil {
+		return nil, err
+	}
+	for _, dr := range drConfigs {
+		spec := dr.Spec.(*v1alpha3.DestinationRule)
+
+		// Deep copy some of DR so we don't modify the original while merging for subsets
+		newDR := dr
+		newSpec := *spec
+		newSpec.Subsets = make([]*v1alpha3.Subset, len(newSpec.Subsets))
+		copy(newSpec.Subsets, spec.Subsets)
+		newDR.Spec = &newSpec
+
+		drs[spec.Host] = &newDR
+	}
+	return drs, nil
+}
+
+// Construct map of hostname -> ServiceEntry
+func mapHostnameToServiceEntry(store istiomodel.ConfigStore) (map[string]*istiomodel.Config, error) {
+	serviceEntries := make(map[string]*istiomodel.Config)
+	seConfigs, err := store.List(istiomodel.ServiceEntry.Type, meta_v1.NamespaceDefault)
+	if err != nil {
+		return nil, err
+	}
+	for _, se := range seConfigs {
+		spec := se.Spec.(*v1alpha3.ServiceEntry)
+
+		// Deep copy Endpoint of SE so we don't modify the original while merging for addresses
+		newSE := se
+		newSpec := *spec
+		newSpec.Endpoints = make([]*v1alpha3.ServiceEntry_Endpoint, 0)
+		for _, endpoint := range spec.Endpoints {
+			newEndpoint := &v1alpha3.ServiceEntry_Endpoint{
+				Address: endpoint.Address,
+				Ports: make(map[string]uint32),
+			}
+			for protocol, port := range endpoint.Ports {
+				newEndpoint.Ports[protocol] = port
+			}
+			newSpec.Endpoints = append(newSpec.Endpoints, newEndpoint)
+		}
+		newSE.Spec = &newSpec
+
+		for _, host := range spec.Hosts {
+			serviceEntries[host] = &newSE
+		}
+	}
+	return serviceEntries, nil
 }
 
 // uniqueifyIstio removes duplicates (e.g. DRs for the same host exposed under different aliases),
@@ -106,13 +155,14 @@ func uniquifyServices(configs []kube_v1.Service) []kube_v1.Service {
 	return unique
 }
 
-func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci ClusterInfo) ([]istiomodel.Config, []kube_v1.Service, error) {
+func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, serviceEntries map[string]*istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, []kube_v1.Service, error) {
 	out := make([]istiomodel.Config, 0)
 	outSvcs := make([]kube_v1.Service, 0)
 
 	for _, remote := range rsb.Remote {
 		for _, svc := range remote.Services {
-			out = append(out, *serviceToServiceEntryDirectIngress(svc, config, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
+			out = append(out, *serviceToServiceEntryDirectIngress(svc, config,
+					serviceEntries, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
 			out = append(out, *serviceToDestinationRuleDirectIngress(svc, config))
 			outSvcs = append(outSvcs, *serviceToKubernetesServiceDirectIngress(svc, config))
 		}
@@ -122,35 +172,75 @@ func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServi
 }
 
 // serviceToServiceEntry() creates a ServiceEntry pointing to istio-egressgateway
-func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, ip string, port uint32) *istiomodel.Config {
-	return &istiomodel.Config{
-		ConfigMeta: istiomodel.ConfigMeta{
-			Type:        istiomodel.ServiceEntry.Type,
-			Group:       istiomodel.ServiceEntry.Group + istiomodel.IstioAPIGroupDomain,
-			Version:     istiomodel.ServiceEntry.Version,
-			Name:        fmt.Sprintf("service-entry-%s", remoteServiceName(rs)),
-			Namespace:   config.Namespace,
-			Annotations: annotations(config),
-		},
-		Spec: &v1alpha3.ServiceEntry{
-			Hosts: []string{rsHostname(rs)},
-			Ports: []*v1alpha3.Port{
-				&v1alpha3.Port{
-					Number:   portClientUses(rs),
-					Protocol: "HTTP",
-					Name:     "http",
-				},
+func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, serviceEntries map[string]*istiomodel.Config, ip string, port uint32) *istiomodel.Config {
+	hostname := rsHostname(rs)
+	protocol := "http"
+	serviceEntry, ok := serviceEntries[hostname]
+	if !ok {
+		serviceEntry = &istiomodel.Config{
+			ConfigMeta: istiomodel.ConfigMeta{
+				Type:        istiomodel.ServiceEntry.Type,
+				Group:       istiomodel.ServiceEntry.Group + istiomodel.IstioAPIGroupDomain,
+				Version:     istiomodel.ServiceEntry.Version,
+				Name:        fmt.Sprintf("service-entry-%s", remoteServiceName(rs)),
+				Namespace:   config.Namespace,
+				Annotations: annotations(config),
 			},
-			Location:   v1alpha3.ServiceEntry_MESH_EXTERNAL,
-			Resolution: v1alpha3.ServiceEntry_STATIC,
-			Endpoints: []*v1alpha3.ServiceEntry_Endpoint{
-				&v1alpha3.ServiceEntry_Endpoint{
-					Address: ip,
-					Ports:   map[string]uint32{"http": port},
+			Spec: &v1alpha3.ServiceEntry{
+				Hosts: []string{rsHostname(rs)},
+				Ports: []*v1alpha3.Port{
+					&v1alpha3.Port{
+						Number:   portClientUses(rs),
+						Protocol: "HTTP",
+						Name:     "http",
+					},
 				},
+				Location:   v1alpha3.ServiceEntry_MESH_EXTERNAL,
+				Resolution: v1alpha3.ServiceEntry_STATIC,
+				Endpoints: []*v1alpha3.ServiceEntry_Endpoint{},
 			},
-		},
+		}
+
+		serviceEntries[hostname] = serviceEntry
 	}
+
+	// Ensure serviceEntry has an endpoint for IP
+	spec := serviceEntry.Spec.(*v1alpha3.ServiceEntry)
+	endpoint := getEndpoint(spec, ip)
+	if endpoint == nil {
+		endpoint = &v1alpha3.ServiceEntry_Endpoint{
+			Address: ip,
+			Ports:   make(map[string]uint32),
+		}
+		spec.Endpoints = append(spec.Endpoints, endpoint)
+	}
+
+	// Ensure serviceEntry.Endpoint has a Port for protocol
+	// TODO Check that the port matches and return error otherwise (unmergable)
+	_, ok = endpoint.Ports[protocol]
+	if !ok {
+		endpoint.Ports[protocol] = port
+	}
+
+	// Ensure the endpoints are sorted (not needed for Istio, needed for go tests)
+	sort.Slice(spec.Endpoints, func(i, j int) bool {
+		return spec.Endpoints[i].Address < spec.Endpoints[j].Address
+		// TODO Ensure the endpoints are stable (e.g. sorted) when there are multiple matching IPs with different protocols/ports
+		// Istio doesn't need them sorted, but the tests expect stable generation
+	})
+
+
+	return serviceEntry
+}
+
+func getEndpoint(serviceEntry *v1alpha3.ServiceEntry, ip string) *v1alpha3.ServiceEntry_Endpoint {
+	for _, endpoint := range serviceEntry.Endpoints {
+		if endpoint.Address == ip {
+			return endpoint
+		}
+	}
+
+	return nil
 }
 
 // portClientUses yields the TCP port that clients expect to invoke
@@ -306,9 +396,6 @@ func expositionToDestinationRuleDirectIngress(es *v1alpha1.ServiceExpositionPoli
 	sort.Slice(spec.Subsets, func(i, j int) bool {
 		return spec.Subsets[i].Name < spec.Subsets[j].Name
 	})
-
-	// Add the dr to the store so that if another ServiceExpositionPolicy refers to the same
-	// service we will modify the DestinationRule we just created.
 
 	return dr, nil
 }

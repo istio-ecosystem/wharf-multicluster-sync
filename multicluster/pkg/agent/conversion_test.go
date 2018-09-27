@@ -78,7 +78,7 @@ func TestServiceToBinding(t *testing.T) {
 			defer out.Close() // nolint: errcheck
 
 			// Sort the keys so output for test purposes deterministic
-			for _, peerName := range sortedStringKeys(tc.in) {
+			for i, peerName := range sortedStringKeys(tc.in) {
 				inName := tc.in[peerName]
 				in, err := os.Open("../test/expose-binding/" + inName)
 				if err != nil {
@@ -88,6 +88,9 @@ func TestServiceToBinding(t *testing.T) {
 
 				if err := readAndConvert(in, out, clusterConfig, peerName); err != nil {
 					t.Fatalf("Unexpected error converting configs: %v", err)
+				}
+				if i+1 < len(tc.in) {
+					out.Write([]byte("---\n")) // nolint: errcheck
 				}
 			}
 

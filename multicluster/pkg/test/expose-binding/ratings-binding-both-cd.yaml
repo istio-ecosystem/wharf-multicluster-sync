@@ -12,6 +12,7 @@ spec:
     services:
     - alias: ratings
       name: ratings
+---
 apiVersion: multicluster.istio.io/v1alpha1
 kind: RemoteServiceBinding
 metadata:

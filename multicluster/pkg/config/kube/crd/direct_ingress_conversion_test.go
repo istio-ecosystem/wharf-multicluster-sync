@@ -59,10 +59,9 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 		{config: "cluster_a.json",
 			in:  "ratings-binding.yaml",
 			out: "ratings-binding.yaml"},
-		// TODO restore once we can generate two remotes
-		//		{config: "cluster_b.json",
-		//			in: "ratings-binding-both-cd.yaml",
-		//			out: "ratings-binding-both-cd.yaml"},
+		{config: "cluster_b_listens_cd.json",
+			in:  "ratings-binding-both-cd.yaml",
+			out: "ratings-binding-both-cd.yaml"},
 	}
 
 	for _, tc := range tt {
