@@ -10,14 +10,11 @@ IMAGE_TAG:=develop
 
 # Go parameters
 GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
    
 all: test
 
 test: 
-	$(GOTEST) -v ./...
+	$(GOCMD) test -v ./...
 
 clean:
 	$(GOCMD) clean
