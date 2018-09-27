@@ -1,0 +1,23 @@
+{
+    "ID": "cluster1",
+    "GatewayIP":"127.0.0.1",
+    "GatewayPort":80,
+    "AgentIP":"localhost",
+    "AgentPort":8998,
+    "peers":[
+        { 
+            "ID": "cluster2",
+            "GatewayIP": "169.62.129.93",
+            "GatewayPort":80,
+            "AgentIP":"localhost",
+            "AgentPort":8999
+        },
+        { 
+            "ID": "clusterC",
+            "GatewayIP": "1.2.3.4",
+            "GatewayPort":80,
+            "AgentIP":"localhost",
+            "AgentPort":8997
+        }
+    ]
+}

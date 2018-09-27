@@ -7,6 +7,7 @@
 package crd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,19 +21,13 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
+	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	multierror "github.com/hashicorp/go-multierror"
 
 	kube_v1 "k8s.io/api/core/v1"
 )
-
-// debugClusterInfo simulates the function of K8s Cluster Registry
-// https://github.com/kubernetes/cluster-registry in unit tests.
-type debugClusterInfo struct {
-	ips   map[string]string
-	ports map[string]uint32
-}
 
 func TestParseYaml(t *testing.T) {
 	tt := []struct {
@@ -135,23 +130,29 @@ func TestValidation(t *testing.T) {
 }
 
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvert(reader io.Reader, writer io.Writer) error {
+func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *agent.ClusterConfig) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
 	}
 
-	ci := debugClusterInfo{
-		ips: map[string]string{
-			"clusterC": "127.0.0.1",
-			"cluster2": "127.0.0.1",
-		},
-		ports: map[string]uint32{
-			"clusterC": 80,
-			"cluster2": 80,
-		},
+	// Ensure every input config is valid
+	mcDescriptor := istiomodel.ConfigDescriptor{
+		mcmodel.ServiceExpositionPolicy,
+		mcmodel.RemoteServiceBinding,
 	}
-	istioConfigs, err := mcmodel.ConvertBindingsAndExposuresEgressIngress(configs, ci)
+	for _, config := range configs {
+		schema, exists := mcDescriptor.GetByType(config.Type)
+		if !exists {
+			continue
+		}
+		err = schema.Validate(config.Name, config.Namespace, config.Spec)
+		if err != nil {
+			return multierror.Prefix(err, "input validation failure")
+		}
+	}
+
+	istioConfigs, err := mcmodel.ConvertBindingsAndExposuresEgressIngress(configs, clusterConfig)
 	if err != nil {
 		return err
 	}
@@ -238,18 +239,20 @@ func writeK8sYAMLOutput(svcs []kube_v1.Service, writer io.Writer) error {
 	return nil
 }
 
-func (ci debugClusterInfo) Ip(name string) string {
-	out, ok := ci.ips[name]
-	if ok {
-		return out
+// loadConfig will load the cluster configuration from the provided JSON file
+func loadConfig(file string) (*agent.ClusterConfig, error) {
+	jsonFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
 	}
-	return "255.255.255.255" // dummy value for unknown clusters
-}
+	defer jsonFile.Close()
 
-func (ci debugClusterInfo) Port(name string) uint32 {
-	out, ok := ci.ports[name]
-	if ok {
-		return out
+	var config agent.ClusterConfig
+	bytes, _ := ioutil.ReadAll(jsonFile)
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		return nil, err
 	}
-	return 8080 // dummy value for unknown clusters
+
+	return &config, nil
 }

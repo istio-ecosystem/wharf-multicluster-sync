@@ -15,21 +15,31 @@ import (
 
 func TestBindingToConfigurationEgressIngress(t *testing.T) {
 	tt := []struct {
-		in  string
-		out string
+		config string // Config of binding cluster
+		in     string
+		out    string
 	}{
-		{in: "sample-binding.yaml",
+		{config: "cluster1.json",
+			in:  "sample-binding.yaml",
 			out: "sample-binding.yaml"},
-		{in: "sample-exposure.yaml",
+		{config: "cluster_a.json",
+			in:  "sample-exposure.yaml",
 			out: "sample-exposure.yaml"},
-		{in: "rshriram-demo-binding.yaml",
+		{config: "cluster1.json",
+			in:  "rshriram-demo-binding.yaml",
 			out: "rshriram-demo-binding.yaml"},
-		{in: "rshriram-demo-exposure.yaml",
+		{config: "cluster_a.json",
+			in:  "rshriram-demo-exposure.yaml",
 			out: "rshriram-demo-exposure.yaml"},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.in, func(t *testing.T) {
+			clusterConfig, err := loadConfig("../../../test/mc-agent/" + tc.config)
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			in, err := os.Open("../../../test/expose-binding/" + tc.in)
 			if err != nil {
 				t.Fatal(err)
@@ -43,7 +53,7 @@ func TestBindingToConfigurationEgressIngress(t *testing.T) {
 			}
 			defer out.Close() // nolint: errcheck
 
-			if err := readAndConvert(in, out); err != nil {
+			if err := readAndConvert(in, out, clusterConfig); err != nil {
 				t.Fatalf("Unexpected error converting configs: %v", err)
 			}
 

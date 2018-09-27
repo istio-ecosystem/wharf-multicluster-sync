@@ -21,6 +21,7 @@ import (
 
 	"istio.io/istio/pilot/test/util"
 
+	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
 	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
 
 	kube_v1 "k8s.io/api/core/v1"
@@ -30,30 +31,47 @@ import (
 
 func TestBindingToDirectIngressConfiguration(t *testing.T) {
 	tt := []struct {
+		config   string // Config of binding cluster
 		in       string // Filename of SEP and RSBs
 		store    string // Filename for baseline Istio configuration for merging
 		svcStore string // Filename for baseline Kuberentes services configuration for merging
 		out      string // Filename for generated Istio configuration
 	}{
-		{in: "rshriram-demo-binding.yaml",
+		{config: "cluster1.json",
+			in:  "rshriram-demo-binding.yaml",
 			out: "banix-demo-binding.yaml"},
-		{in: "rshriram-demo-exposure.yaml",
+		{config: "cluster_a.json",
+			in:  "rshriram-demo-exposure.yaml",
 			out: "banix-demo-exposure.yaml"},
-		{in: "reviews-binding.yaml",
+		{config: "cluster1.json",
+			in:  "reviews-binding.yaml",
 			out: "reviews-directingress-binding.yaml"},
-		{in: "reviews-binding-v1-only.yaml",
+		{config: "cluster1.json",
+			in:  "reviews-binding-v1-only.yaml",
 			out: "reviews-directingress-binding-v1-only.yaml"},
-		{in: "reviews-exposure-both.yaml",
+		{config: "cluster_a.json",
+			in:    "reviews-exposure-both.yaml",
 			out:   "reviews-directingress-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
-		{in: "reviews-binding-three-versions.yaml",
+		{config: "cluster_a.json",
+			in:  "reviews-binding-three-versions.yaml",
 			out: "reviews-binding-three-versions.yaml"},
-		{in: "ratings-binding.yaml",
+		{config: "cluster_a.json",
+			in:  "ratings-binding.yaml",
 			out: "ratings-binding.yaml"},
+		// TODO restore once we can generate two remotes
+		//		{config: "cluster_b.json",
+		//			in: "ratings-binding-both-cd.yaml",
+		//			out: "ratings-binding-both-cd.yaml"},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.in, func(t *testing.T) {
+			clusterConfig, err := loadConfig("../../../test/mc-agent/" + tc.config)
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			in, err := os.Open("../../../test/expose-binding/" + tc.in)
 			if err != nil {
 				t.Fatal(err)
@@ -87,7 +105,7 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 				svcStore = make([]kube_v1.Service, 0)
 			}
 
-			if err := readAndConvertDirectIngress(in, out, store, svcStore); err != nil {
+			if err := readAndConvertDirectIngress(in, out, clusterConfig, store, svcStore); err != nil {
 				t.Fatalf("Unexpected error converting configs: %v", err)
 			}
 
@@ -97,23 +115,29 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 }
 
 // readAndConvertDirectIngress converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, store istiomodel.ConfigStore, svcStore []kube_v1.Service) error {
+func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, clusterConfig *agent.ClusterConfig, store istiomodel.ConfigStore, svcStore []kube_v1.Service) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
 	}
 
-	ci := debugClusterInfo{
-		ips: map[string]string{
-			"clusterC": "127.0.0.1",
-			"cluster2": "127.0.0.1",
-		},
-		ports: map[string]uint32{
-			"clusterC": 80,
-			"cluster2": 80,
-		},
+	// Ensure every input config is valid
+	mcDescriptor := istiomodel.ConfigDescriptor{
+		mcmodel.ServiceExpositionPolicy,
+		mcmodel.RemoteServiceBinding,
 	}
-	istioConfigs, svcs, err := mcmodel.ConvertBindingsAndExposuresDirectIngress(configs, ci, store, svcStore)
+	for _, config := range configs {
+		schema, exists := mcDescriptor.GetByType(config.Type)
+		if !exists {
+			continue
+		}
+		err = schema.Validate(config.Name, config.Namespace, config.Spec)
+		if err != nil {
+			return multierror.Prefix(err, "input validation failure")
+		}
+	}
+
+	istioConfigs, svcs, err := mcmodel.ConvertBindingsAndExposuresDirectIngress(configs, clusterConfig, store, svcStore)
 	if err != nil {
 		return err
 	}

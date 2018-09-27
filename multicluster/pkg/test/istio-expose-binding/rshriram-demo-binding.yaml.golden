@@ -93,7 +93,7 @@ spec:
   addresses:
   - 127.8.8.8
   endpoints:
-  - address: 127.0.0.1
+  - address: 169.62.129.93
     ports:
       tcp: 80
   hosts:

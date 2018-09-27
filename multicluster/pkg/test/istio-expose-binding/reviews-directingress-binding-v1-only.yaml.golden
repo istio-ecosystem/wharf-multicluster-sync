@@ -8,7 +8,7 @@ metadata:
   namespace: default
 spec:
   endpoints:
-  - address: 127.0.0.1
+  - address: 169.62.129.93
     ports:
       http: 80
   hosts:
