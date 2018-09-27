@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mc-configuration
+  namespace: default
+  labels:
+    istio: multi-cluster-agent
+data:
+  config.yaml: |
+      ID: cluster-a
+      GatewayIP: 159.8.183.116
+      GatewayPort: 80
+      AgentPort: 8999
+      TrustedPeers: []
+      Peers:
+      - ID: cluster-b
+        GatewayIP: 159.122.217.84
+        GatewayPort: 80
+        AgentIP: 159.122.217.82
+        AgentPort: 80 
+        ConnectionMode: live
