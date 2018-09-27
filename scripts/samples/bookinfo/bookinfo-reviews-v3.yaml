@@ -4,18 +4,18 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: reviews-v2
+  name: reviews-v3
 spec:
   replicas: 1
   template:
     metadata:
       labels:
         app: reviews
-        version: v2
+        version: v3
     spec:
       containers:
       - name: reviews
-        image: istio/examples-bookinfo-reviews-v2:1.8.0
+        image: istio/examples-bookinfo-reviews-v3:1.8.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 9080

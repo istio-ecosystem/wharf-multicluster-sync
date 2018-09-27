@@ -1,6 +1,6 @@
 {
     "id": "clusterb.myorg",
-    "gatewayIP": "169.62.129.93",
+    "gatewayIP": "169.61.233.12",
     "gatewayPort": 80,
     "agentIP": "localhost",
     "agentPort": 8999,

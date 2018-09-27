@@ -14,8 +14,9 @@ kubectl --context ${CLUSTER2_NAME} delete  -f ./reviews-exposure.yaml || true
 kubectl --context ${CLUSTER1_NAME} delete  -f ./reviews-selectorless-service.yaml || true
 
 
-kubectl --context $CLUSTER1_NAME delete remoteservicebinding,ServiceExpositionPolicy  --all
-kubectl --context $CLUSTER2_NAME delete remoteservicebinding,ServiceExpositionPolicy  --all
+kubectl --context $CLUSTER1_NAME delete remoteservicebinding,ServiceExpositionPolicy,virtualservice,serviceentry,destinationrule,gateway  --all
+kubectl --context $CLUSTER2_NAME delete remoteservicebinding,ServiceExpositionPolicy,virtualservice,serviceentry,destinationrule,gateway  --all
+kubectl --context $CLUSTER2_NAME delete remoteservicebinding,ServiceExpositionPolicy,virtualservice,serviceentry,destinationrule,gateway  --all
 
 
 kubectl --context $CLUSTER1_NAME get remoteservicebinding 

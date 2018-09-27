@@ -6,7 +6,7 @@ source ~/Sandbox/kube_context.sh
 kubectl --context ${ROOTCA_NAME} delete  -f istio-citadel-standalone.yaml
 
 
-for CLUSTER in ${CLUSTER1_NAME} ${CLUSTER2_NAME} ${ROOTCA_NAME} ${CLUSTER3_NAME}
+for CLUSTER in ${CLUSTER1_NAME} ${CLUSTER2_NAME} ${CLUSTER3_NAME} ${ROOTCA_NAME} 
 do
   echo "Deleting Istio resources on" $CLUSTER 
   kubectl --context ${ROOTCA_NAME} delete serviceaccount -n istio-system istio-citadel-service-account-${CLUSTER}
@@ -22,5 +22,11 @@ do
   kubectl --context ${CLUSTER} delete ServiceEntry,Gateway,DestinationRule,VirtualService --all
 done
 
-pkill go
-rm ${DEMODIR}/clustes/*.log
+pkill main
+rm ${DEMODIR}/clusters/*.log
+
+echo "*** Make sure noone listening on the agent ports: "
+lsof -nP -i4TCP:8997 | grep LISTEN
+lsof -nP -i4TCP:8998 | grep LISTEN
+lsof -nP -i4TCP:8999 | grep LISTEN
+echo "*** Make sure noone listening on the agent ports, end. "

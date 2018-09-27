@@ -79,6 +79,7 @@ sleep 2
 
 cd $AGENTDIR
 export MC_STYLE=DIRECT_INGRESS
+#echo "************ DID NOT start agents. ****************"
 go run main.go -configJson $DEMODIR/clusters/cluster_a.json --context $CLUSTER1_NAME > $DEMODIR/clusters/cluster_a.log 2>&1 &
 go run main.go -configJson $DEMODIR/clusters/cluster_b.json --context $CLUSTER2_NAME > $DEMODIR/clusters/cluster_b.log 2>&1 &
 go run main.go -configJson $DEMODIR/clusters/cluster_c.json --context $CLUSTER3_NAME > $DEMODIR/clusters/cluster_c.log 2>&1 &

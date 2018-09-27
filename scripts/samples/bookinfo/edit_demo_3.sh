@@ -1,0 +1,1 @@
+kubectl --context $CLUSTER1_NAME edit destinationrule dest-rule-reviews -o json

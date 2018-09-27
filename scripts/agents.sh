@@ -25,11 +25,6 @@ son
 
 echo "That is it for now."
 
-if [ -z "$CONNECTION_MODE" ]; then
-	echo "*DEFAULTING* CONNECTION_MODE to 'live'"
-else
-	echo Using CONNECTION_MODE $CONNECTION_MODE
-fi  
 
 cd $AGENTDIR
 export MC_STYLE=DIRECT_INGRESS

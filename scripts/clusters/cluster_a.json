@@ -7,7 +7,7 @@
     "peers":[
         { 
             "id": "clusterb.myorg",
-            "GatewayIP": "169.62.129.93",
+            "GatewayIP": "169.61.233.12",
             "GatewayPort":80,
             "AgentIP":"localhost",
             "AgentPort":8999,

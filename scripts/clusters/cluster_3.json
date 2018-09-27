@@ -1,8 +1,0 @@
-{
-    "id": "cluster3.myorg",
-    "gatewayIP": "169.62.214.226",
-    "gatewayPort": 80,
-    "agentIP": "localhost",
-    "agentPort": 8997,
-    "TrustedPeers": ["cluster2.myorg"]
-}

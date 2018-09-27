@@ -13,7 +13,8 @@ kubectl --context ${CLUSTER2_NAME} create  -f ./bookinfo-reviews-v1.yaml
 kubectl --context ${CLUSTER2_NAME} create  -f ./reviews-exposure.yaml
 
 
-export INGRESS_HOST=$(kubectl --context $CLUSTER1_NAME  get po -l istio=ingressgateway -n istio-system -o 'jsonpath={.items[0].status.hostIP}')
+#export INGRESS_HOST=$(kubectl --context $CLUSTER1_NAME  get po -l istio=ingressgateway -n istio-system -o 'jsonpath={.items[0].status.hostIP}')
+export INGRESS_HOST=$(kubectl --context $CLUSTER1_NAME  get svc istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 export INGRESS_PORT=$(kubectl --context  $CLUSTER1_NAME -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
 export GATEWAY_URL=$INGRESS_HOST:$INGRESS_PORT
 echo " *** Accees Bookinfo at: http://"${GATEWAY_URL}"/productpage ***"
