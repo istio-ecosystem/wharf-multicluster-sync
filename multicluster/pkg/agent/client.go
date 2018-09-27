@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 
 const (
 	pollInterval = 5 * time.Second
-	modeEnvKey   = "CONNECTION_MODE"
 )
 
 // Client is an agent client meant to connect to an agent server on a peered
@@ -47,6 +45,8 @@ func NewClient(config *ClusterConfig, peer *ClusterConfig, store *mcmodel.MCConf
 
 // Run will start...
 func (c *Client) Run(stopCh chan struct{}) {
+	log.Debugf("Configuration for peer [%s]:\nConnection mode: %s\nAgent: %s:%d\nGateway: %s:%d",
+		c.peer.ID, c.peer.ConnectionMode, c.peer.AgentIP, c.peer.AgentPort, c.peer.GatewayIP, c.peer.GatewayPort)
 	go func() {
 		// start polling
 		tick := time.Tick(c.pollInterval)
@@ -76,7 +76,10 @@ func (c *Client) update() {
 
 	// Get the connection mode for the peer. Can either be live or potential.
 	// In live mode the Istio Configs will be created and deleted.
-	connMode := getConnectionMode(c.peer.ID)
+	connMode := c.peer.ConnectionMode
+	if connMode == "" {
+		connMode = ConnectionModeLive
+	}
 
 	// If returned query response is 0 exposed services it can either be that
 	// all exposed services were removed or there weren't any in the first
@@ -221,18 +224,4 @@ func (c *Client) remoteServiceBinding() *model.Config {
 		}
 	}
 	return nil
-}
-
-// getConnectionMode returns the mode ("active" or "potential") for new bindings for the peer
-func getConnectionMode(peerID string) string {
-	// TODO Watch a ConfigMap and use that value to let the user dynamically set the mode
-	// for each cluster.
-	mode := os.Getenv(modeEnvKey)
-	if mode != "" {
-		log.Debugf("Env var %q defined, creating RSB as %s\n",  modeEnvKey, mode)
-		return mode
-	}
-	
-	log.Debugf("Env var %q NOT defined, DEFAULTING RSB mode to %s\n",  modeEnvKey, ConnectionModeLive)
-	return ConnectionModeLive
 }
