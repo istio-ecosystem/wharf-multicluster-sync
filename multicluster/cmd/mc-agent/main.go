@@ -111,8 +111,6 @@ func main() {
 		log.Debugf("Config store now has %d ServiceExpositionPolicy entries", len(mcStore.ServiceExpositionPolicies()))
 	})
 
-	log.Debugf("RemoteServiceBinding %q is %s", "CONNECTION_MODE", os.Getenv("CONNECTION_MODE"))
-
 	// Register model configs event handler that will update the config store accordingly
 	// for RemoteServiceBinding resources
 	ctl.RegisterEventHandler(mcmodel.RemoteServiceBinding.Type, func(config model.Config, ev model.Event) {

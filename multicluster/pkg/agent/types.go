@@ -32,6 +32,8 @@ type ClusterConfig struct {
 	AgentIP   string `json:"agentIP" yaml:"AgentIP"`
 	AgentPort uint16 `json:"agentPort" yaml:"AgentPort"`
 
+	ConnectionMode string `json:"connectionMode" yaml:"ConnectionMode"`
+
 	Peers        []ClusterConfig `json:"peers,omitempty" yaml:"Peers,omitempty"`
 	TrustedPeers []string        `json:"trustedPeers,omitempty" yaml:"TrustedPeers,omitempty"`
 }
