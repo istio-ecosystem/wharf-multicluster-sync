@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"gopkg.in/yaml.v2"
 
 	"istio.io/istio/pilot/pkg/config/kube/crd"
@@ -41,6 +42,9 @@ var (
 	mcStore       mcmodel.MCConfigStore
 	istioStore    model.ConfigStore
 	clusterConfig *agent.ClusterConfig
+	configWatcher *fsnotify.Watcher
+	clientsCfgCh  map[string](chan agent.ClusterConfig)
+	stopCh        chan struct{}
 
 	configsMgmt *agent.ConfigsManagement
 )
@@ -51,16 +55,20 @@ func main() {
 	// Load the cluster config from the provided json or yaml file
 	var err error
 	if configJSON != "" {
-		clusterConfig, err = loadJsonConfig(configJSON)
+		clusterConfig, err = loadConfig(configJSON, false)
+		configWatcher = launchConfigWatcher(configJSON, false)
 	} else if configYAML != "" {
-		clusterConfig, err = loadYamlConfig(configYAML)
+		clusterConfig, err = loadConfig(configYAML, true)
+		configWatcher = launchConfigWatcher(configYAML, true)
 	} else {
 		err = fmt.Errorf("Cluster configuration file must be provided with the -configJson or -configYaml flag")
 	}
-
 	if err != nil {
 		log.Errora(err)
 		return
+	}
+	if configWatcher != nil {
+		defer configWatcher.Close()
 	}
 
 	// Set up a Kubernetes API ConfigStore for Istio configs
@@ -142,7 +150,7 @@ func main() {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
-	stopCh := make(chan struct{})
+	stopCh = make(chan struct{})
 
 	log.Debug("Starting Istio controller..")
 	go istioStore.Run(stopCh)
@@ -155,15 +163,9 @@ func main() {
 	go server.Run()
 
 	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))
-	clients := []*agent.Client{}
+	clientsCfgCh = map[string]chan agent.ClusterConfig{}
 	for _, peer := range clusterConfig.Peers {
-		client, err := agent.NewClient(clusterConfig, &peer, &mcStore, istioStore)
-		if err != nil {
-			log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
-			continue
-		}
-		go client.Run(stopCh)
-		clients = append(clients, client)
+		launchPeerClient(peer)
 	}
 
 	<-shutdown
@@ -173,6 +175,16 @@ func main() {
 	server.Close()
 
 	_ = log.Sync()
+}
+
+func launchPeerClient(peer agent.ClusterConfig) {
+	client, err := agent.NewClient(clusterConfig, &peer, &mcStore, istioStore)
+	if err != nil {
+		log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
+	}
+	cfgCh := make(chan agent.ClusterConfig)
+	clientsCfgCh[peer.ID] = cfgCh
+	go client.Run(cfgCh, stopCh)
 }
 
 func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
@@ -187,16 +199,20 @@ func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
 }
 
 // loadJsonConfig will load the cluster configuration from the provided JSON file
-func loadJsonConfig(file string) (*agent.ClusterConfig, error) {
-	jsonFile, err := os.Open(file)
+func loadConfig(filename string, isYaml bool) (*agent.ClusterConfig, error) {
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	defer jsonFile.Close()
+	defer file.Close()
 
 	var config agent.ClusterConfig
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	err = json.Unmarshal(bytes, &config)
+	bytes, _ := ioutil.ReadAll(file)
+	if isYaml {
+		err = yaml.Unmarshal(bytes, &config)
+	} else {
+		err = json.Unmarshal(bytes, &config)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -204,22 +220,59 @@ func loadJsonConfig(file string) (*agent.ClusterConfig, error) {
 	return &config, nil
 }
 
-// loadYamlConfig will load the cluster configuration from the provided YAML file
-func loadYamlConfig(file string) (*agent.ClusterConfig, error) {
-	yamlFile, err := os.Open(file)
+func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		log.Errora(err)
+		return nil
 	}
-	defer yamlFile.Close()
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					//Config file modified
+					log.Debug("Config file modified. Reloading.")
+					newClusterConfig, err := loadConfig(file, isYaml)
+					if err != nil {
+						log.Error("Failed to reload the config file")
+						continue
+					}
 
-	var config agent.ClusterConfig
-	bytes, _ := ioutil.ReadAll(yamlFile)
-	err = yaml.Unmarshal(bytes, &config)
+					clusterConfig = newClusterConfig
+
+					handled := map[string]bool{}
+					for _, peer := range clusterConfig.Peers {
+						// Update client with updated configuration
+						if clientsCfgCh[peer.ID] != nil {
+							clientsCfgCh[peer.ID] <- *clusterConfig
+						} else {
+							//This is a new peer. Launch a new client for it
+							launchPeerClient(peer)
+						}
+						handled[peer.ID] = true
+					}
+
+					//Find clients which are no longer needed and close them
+					for id, cfgCh := range clientsCfgCh {
+						if !handled[id] {
+							clientsCfgCh[id] = nil
+							close(cfgCh)
+						}
+					}
+				}
+			}
+		}
+	}()
+	err = watcher.Add(file)
 	if err != nil {
-		return nil, err
+		log.Errora(err)
+		return nil
 	}
-
-	return &config, nil
+	return watcher
 }
 
 func init() {

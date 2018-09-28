@@ -44,7 +44,7 @@ func NewClient(config *ClusterConfig, peer *ClusterConfig, store *mcmodel.MCConf
 }
 
 // Run will start...
-func (c *Client) Run(stopCh chan struct{}) {
+func (c *Client) Run(cfgCh chan ClusterConfig, stopCh chan struct{}) {
 	log.Debugf("Configuration for peer [%s]:\nConnection mode: %s\nAgent: %s:%d\nGateway: %s:%d",
 		c.peer.ID, c.peer.ConnectionMode, c.peer.AgentIP, c.peer.AgentPort, c.peer.GatewayIP, c.peer.GatewayPort)
 	go func() {
@@ -52,6 +52,12 @@ func (c *Client) Run(stopCh chan struct{}) {
 		tick := time.Tick(c.pollInterval)
 		for {
 			select {
+			case cfg, ok := <-cfgCh:
+				if !ok {
+					c.close()
+					return
+				}
+				c.configUpdated(&cfg)
 			case <-stopCh:
 				c.close()
 				return
@@ -224,4 +230,15 @@ func (c *Client) remoteServiceBinding() *model.Config {
 		}
 	}
 	return nil
+}
+
+// When new agent config arrives the function will update agent and the peer
+// configs specific to this client.
+func (c *Client) configUpdated(newConfig *ClusterConfig) {
+	c.config = newConfig
+	for _, newPeer := range newConfig.Peers {
+		if newPeer.ID == c.peer.ID {
+			c.peer = &newPeer
+		}
+	}
 }
