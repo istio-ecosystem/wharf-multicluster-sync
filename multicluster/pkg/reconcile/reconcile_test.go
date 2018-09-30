@@ -532,7 +532,7 @@ func checkEqualConfigMetas(configs []istiomodel.Config, expected []istiomodel.Co
 	return nil
 }
 
-func (ci debugClusterInfo) Ip(name string) string {
+func (ci debugClusterInfo) IP(name string) string {
 	out, ok := ci.ips[name]
 	if ok {
 		return out

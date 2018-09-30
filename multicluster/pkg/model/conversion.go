@@ -27,7 +27,7 @@ const (
 )
 
 type ClusterInfo interface {
-	Ip(name string) string
+	IP(name string) string
 	Port(name string) uint32
 }
 

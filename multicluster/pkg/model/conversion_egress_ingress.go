@@ -216,7 +216,7 @@ func convertRSB(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, ci
 			out = append(out, *serviceToGateway(svc, config))
 			out = append(out, *serviceToVirtualService(remote, svc, config))
 		}
-		out = append(out, *clusterToServiceEntry(remote, ci.Ip(remote.Cluster), ci.Port(remote.Cluster), config))
+		out = append(out, *clusterToServiceEntry(remote, ci.IP(remote.Cluster), ci.Port(remote.Cluster), config))
 	}
 
 	return out, nil

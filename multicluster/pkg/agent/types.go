@@ -38,8 +38,8 @@ type ClusterConfig struct {
 	TrustedPeers []string        `json:"trustedPeers,omitempty" yaml:"TrustedPeers,omitempty"`
 }
 
-// Ip is implementing the model.ClusterInfo interface
-func (cc ClusterConfig) Ip(name string) string {
+// IP is implementing the model.ClusterInfo interface
+func (cc ClusterConfig) IP(name string) string {
 	if name == cc.ID {
 		return cc.GatewayIP
 	}

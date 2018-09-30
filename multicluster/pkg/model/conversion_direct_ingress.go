@@ -162,7 +162,7 @@ func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServi
 	for _, remote := range rsb.Remote {
 		for _, svc := range remote.Services {
 			out = append(out, *serviceToServiceEntryDirectIngress(svc, config,
-					serviceEntries, ci.Ip(remote.Cluster), ci.Port(remote.Cluster)))
+					serviceEntries, ci.IP(remote.Cluster), ci.Port(remote.Cluster)))
 			out = append(out, *serviceToDestinationRuleDirectIngress(svc, config))
 			outSvcs = append(outSvcs, *serviceToKubernetesServiceDirectIngress(svc, config))
 		}

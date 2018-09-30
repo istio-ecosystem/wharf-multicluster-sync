@@ -213,7 +213,7 @@ func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
 	return config, nil
 }
 
-func (ci staticClusterInfo) Ip(name string) string {
+func (ci staticClusterInfo) IP(name string) string {
 	out, ok := ci.ips[name]
 	if ok {
 		return out
