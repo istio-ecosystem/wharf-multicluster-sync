@@ -236,7 +236,7 @@ func (c *Client) remoteServiceBinding() *model.Config {
 // configs specific to this client.
 func (c *Client) configUpdated(newConfig *ClusterConfig) {
 	c.config = newConfig
-	for _, newPeer := range newConfig.Peers {
+	for _, newPeer := range newConfig.WatchedPeers {
 		if newPeer.ID == c.peer.ID {
 			c.peer = &newPeer
 		}

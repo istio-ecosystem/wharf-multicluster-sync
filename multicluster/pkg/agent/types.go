@@ -34,7 +34,7 @@ type ClusterConfig struct {
 
 	ConnectionMode string `json:"connectionMode" yaml:"ConnectionMode"`
 
-	Peers        []ClusterConfig `json:"peers,omitempty" yaml:"WatchedPeers,omitempty"`
+	WatchedPeers []ClusterConfig `json:"peers,omitempty" yaml:"WatchedPeers,omitempty"`
 	TrustedPeers []string        `json:"trustedPeers,omitempty" yaml:"TrustedPeers,omitempty"`
 }
 
@@ -43,7 +43,7 @@ func (cc ClusterConfig) Ip(name string) string {
 	if name == cc.ID {
 		return cc.GatewayIP
 	}
-	for _, peer := range cc.Peers {
+	for _, peer := range cc.WatchedPeers {
 		if name == peer.ID {
 			return peer.GatewayIP
 		}
@@ -56,7 +56,7 @@ func (cc ClusterConfig) Port(name string) uint32 {
 	if name == cc.ID {
 		return uint32(cc.GatewayPort)
 	}
-	for _, peer := range cc.Peers {
+	for _, peer := range cc.WatchedPeers {
 		if name == peer.ID {
 			return uint32(peer.GatewayPort)
 		}

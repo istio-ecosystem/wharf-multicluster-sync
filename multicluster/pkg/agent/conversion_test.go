@@ -182,7 +182,7 @@ func writeMCYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomo
 }
 
 func lookupPeer(peerName string, clusterConfig *ClusterConfig) (*ClusterConfig, error) {
-	for _, peer := range clusterConfig.Peers {
+	for _, peer := range clusterConfig.WatchedPeers {
 		if peer.ID == peerName {
 			return &peer, nil
 		}

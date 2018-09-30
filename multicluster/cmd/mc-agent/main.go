@@ -162,9 +162,9 @@ func main() {
 	server, err := agent.NewServer(clusterConfig, mcStore)
 	go server.Run()
 
-	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.Peers))
+	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.WatchedPeers))
 	clientsCfgCh = map[string]chan agent.ClusterConfig{}
-	for _, peer := range clusterConfig.Peers {
+	for _, peer := range clusterConfig.WatchedPeers {
 		launchPeerClient(peer)
 	}
 
@@ -245,7 +245,7 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 					clusterConfig = newClusterConfig
 
 					handled := map[string]bool{}
-					for _, peer := range clusterConfig.Peers {
+					for _, peer := range clusterConfig.WatchedPeers {
 						// Update client with updated configuration
 						if clientsCfgCh[peer.ID] != nil {
 							clientsCfgCh[peer.ID] <- *clusterConfig
