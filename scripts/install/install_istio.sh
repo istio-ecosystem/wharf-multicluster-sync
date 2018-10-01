@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-source ~/Sandbox/kube_context.sh
+source ./kube_context.sh
 
 SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 ISTIODIR="/Users/mb/Repos/istio-1.0.2"
@@ -20,5 +20,5 @@ do
    # Installing Istio
    kubectl --context ${CLUSTER} create namespace istio-system || true
    kubectl --context ${CLUSTER} apply -f ${ISTIODIR}/install/kubernetes/helm/istio/templates/crds.yaml
-   kubectl --context ${CLUSTER1_NAME} apply -f ${ISTIODIR}/install/kubernetes/istio-demo-auth.yaml
+   kubectl --context ${CLUSTER} apply -f ${ISTIODIR}/install/kubernetes/istio-demo-auth.yaml
 done

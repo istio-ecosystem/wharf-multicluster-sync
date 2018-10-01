@@ -1,0 +1,3 @@
+install_citadal.sh
+install_istio.sh
+install_citadal_new.sh
