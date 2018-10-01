@@ -134,7 +134,9 @@ func serviceToGateway(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServ
 }
 
 // serviceToVirtualService() creates a VirtualService with sniHosts
-func serviceToVirtualService(remote *v1alpha1.RemoteServiceBinding_RemoteCluster, rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config) *istiomodel.Config {
+func serviceToVirtualService(remote *v1alpha1.RemoteServiceBinding_RemoteCluster,
+	rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService,
+	config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.VirtualService.Type,
@@ -174,7 +176,8 @@ func serviceToVirtualService(remote *v1alpha1.RemoteServiceBinding_RemoteCluster
 }
 
 // clusterToServiceEntry() creates a ServiceEntry pointing to a remote cluster
-func clusterToServiceEntry(remote *v1alpha1.RemoteServiceBinding_RemoteCluster, ip string, port uint32, config istiomodel.Config) *istiomodel.Config {
+func clusterToServiceEntry(remote *v1alpha1.RemoteServiceBinding_RemoteCluster,
+	ip string, port uint32, config istiomodel.Config) *istiomodel.Config {
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.ServiceEntry.Type,
@@ -354,11 +357,6 @@ func convertSEP(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy)
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range sep.Exposed {
-		svcname := remote.Alias
-		if svcname == "" {
-			svcname = remote.Name
-		}
-
 		dr, err := expositionToDestinationRule(remote, config)
 		if err != nil {
 			return out, err
@@ -380,6 +378,7 @@ func convertSEP(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy)
 	return out, nil
 }
 
+// ConvertBindingsAndExposuresEgressIngress converts multicluster desired state into Istio state
 func ConvertBindingsAndExposuresEgressIngress(mcs []istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 

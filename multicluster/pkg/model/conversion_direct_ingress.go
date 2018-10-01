@@ -33,8 +33,7 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 		return nil, nil, err
 	}
 
-
-	// Construct map of hostname -> ServiceEntry (needed for merging for multiple endpoints) 
+	// Construct map of hostname -> ServiceEntry (needed for merging for multiple endpoints)
 	vss, err := mapHostnameToServiceEntry(store)
 	if err != nil {
 		return nil, nil, err
@@ -102,7 +101,7 @@ func mapHostnameToServiceEntry(store istiomodel.ConfigStore) (map[string]*istiom
 		for _, endpoint := range spec.Endpoints {
 			newEndpoint := &v1alpha3.ServiceEntry_Endpoint{
 				Address: endpoint.Address,
-				Ports: make(map[string]uint32),
+				Ports:   make(map[string]uint32),
 			}
 			for protocol, port := range endpoint.Ports {
 				newEndpoint.Ports[protocol] = port
@@ -155,14 +154,16 @@ func uniquifyServices(configs []kube_v1.Service) []kube_v1.Service {
 	return unique
 }
 
-func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding, serviceEntries map[string]*istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, []kube_v1.Service, error) {
+func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServiceBinding,
+	serviceEntries map[string]*istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config,
+	[]kube_v1.Service, error) {
 	out := make([]istiomodel.Config, 0)
 	outSvcs := make([]kube_v1.Service, 0)
 
 	for _, remote := range rsb.Remote {
 		for _, svc := range remote.Services {
 			out = append(out, *serviceToServiceEntryDirectIngress(svc, config,
-					serviceEntries, ci.IP(remote.Cluster), ci.Port(remote.Cluster)))
+				serviceEntries, ci.IP(remote.Cluster), ci.Port(remote.Cluster)))
 			out = append(out, *serviceToDestinationRuleDirectIngress(svc, config))
 			outSvcs = append(outSvcs, *serviceToKubernetesServiceDirectIngress(svc, config))
 		}
@@ -197,7 +198,7 @@ func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_Remote
 				},
 				Location:   v1alpha3.ServiceEntry_MESH_EXTERNAL,
 				Resolution: v1alpha3.ServiceEntry_STATIC,
-				Endpoints: []*v1alpha3.ServiceEntry_Endpoint{},
+				Endpoints:  []*v1alpha3.ServiceEntry_Endpoint{},
 			},
 		}
 
@@ -228,7 +229,6 @@ func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_Remote
 		// TODO Ensure the endpoints are stable (e.g. sorted) when there are multiple matching IPs with different protocols/ports
 		// Istio doesn't need them sorted, but the tests expect stable generation
 	})
-
 
 	return serviceEntry
 }
@@ -313,11 +313,6 @@ func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpo
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range sep.Exposed {
-		svcname := remote.Alias
-		if svcname == "" {
-			svcname = remote.Name
-		}
-
 		dr, err := expositionToDestinationRuleDirectIngress(remote, config, drs)
 		if err != nil {
 			return out, err
@@ -340,7 +335,8 @@ func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpo
 }
 
 // 'drs' maps hostname to DestinationRule and is used to keep track of destinations exposed with different subset and/or alias
-func expositionToDestinationRuleDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config, drs map[string]*istiomodel.Config) (*istiomodel.Config, error) {
+func expositionToDestinationRuleDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService,
+	config istiomodel.Config, drs map[string]*istiomodel.Config) (*istiomodel.Config, error) {
 	hostname := fmt.Sprintf("%s.default.svc.cluster.local", es.Name)
 
 	dr, ok := drs[hostname]

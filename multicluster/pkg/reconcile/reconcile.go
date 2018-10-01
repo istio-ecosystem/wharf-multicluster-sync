@@ -20,12 +20,14 @@ import (
 	kube_v1 "k8s.io/api/core/v1"
 )
 
+// KubernetesChanges lists changes needed to bring Kubernetes in line with multicluster desired state
 type KubernetesChanges struct {
 	Additions     []kube_v1.Service
 	Modifications []kube_v1.Service
 	Deletions     []kube_v1.Service
 }
 
+// ConfigChanges lists changes needed to bring Istio in line with multicluster desired state
 type ConfigChanges struct {
 	Additions     []istiomodel.Config
 	Modifications []istiomodel.Config
@@ -39,12 +41,14 @@ type reconciler struct {
 	clusterInfo model.ClusterInfo
 }
 
+// Reconciler merges new multicluster desired state config with existing Istio and K8s configuration producing the desired state
 type Reconciler interface {
 	AddMulticlusterConfig(config istiomodel.Config) (*ConfigChanges, error)
 	ModifyMulticlusterConfig(config istiomodel.Config) (*ConfigChanges, error)
 	DeleteMulticlusterConfig(config istiomodel.Config) (*ConfigChanges, error)
 }
 
+// NewReconciler creates a Reconciler to merge existing configuration with Multicluster configuration
 func NewReconciler(store istiomodel.ConfigStore, services []kube_v1.Service, clusterInfo model.ClusterInfo) Reconciler {
 	return &reconciler{
 		store:       store,
@@ -111,7 +115,7 @@ func (r *reconciler) ModifyMulticlusterConfig(config istiomodel.Config) (*Config
 
 // DeleteMulticlusterConfig takes an Istio config store and a deleted RemoteServiceBinding or ServiceExpositionPolicy
 // and returns the Istio configurations that should be removed to disable the multicluster config.
-// Only the Type, Name, and Namespace of the output configs is guarenteed usable.
+// Only the Type, Name, and Namespace of the output configs is guaranteed usable.
 func (r *reconciler) DeleteMulticlusterConfig(config istiomodel.Config) (*ConfigChanges, error) {
 
 	var err error

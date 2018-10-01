@@ -101,7 +101,7 @@ func TestServiceToBinding(t *testing.T) {
 
 func sortedStringKeys(in map[string]string) []string {
 	out := make([]string, 0)
-	for key, _ := range in {
+	for key := range in {
 		out = append(out, key)
 	}
 	sort.Strings(out)
@@ -142,7 +142,7 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *ClusterCo
 	exposedSvcs := ExposedServices{Services: svcs}
 	binding := client.createRemoteServiceBinding(&exposedSvcs, ConnectionModeLive)
 	if binding != nil {
-		if err := mcmodel.RemoteServiceBinding.Validate(binding.Name, binding.Namespace, binding.Spec); err != nil {
+		if err = mcmodel.RemoteServiceBinding.Validate(binding.Name, binding.Namespace, binding.Spec); err != nil {
 			return multierror.Prefix(err, "validation error:")
 		}
 
@@ -188,7 +188,7 @@ func lookupPeer(peerName string, clusterConfig *ClusterConfig) (*ClusterConfig, 
 		}
 	}
 
-	return nil, fmt.Errorf("No peer %q in %v", peerName, clusterConfig)
+	return nil, fmt.Errorf("no peer %q in %v", peerName, clusterConfig)
 }
 
 func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
@@ -223,7 +223,7 @@ func loadConfig(file string) (*ClusterConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer jsonFile.Close()
+	defer jsonFile.Close() // nolint: errcheck
 
 	var config ClusterConfig
 	bytes, _ := ioutil.ReadAll(jsonFile)

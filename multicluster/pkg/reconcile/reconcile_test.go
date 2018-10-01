@@ -77,9 +77,9 @@ func TestReconcileBinding(t *testing.T) {
 	for i, tc := range tt {
 		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
 			if tc.style != "" {
-				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style)
+				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style) // nolint: errcheck
 			} else {
-				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle)
+				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle) // nolint: errcheck
 			}
 
 			cs, err := createDebugConfigStore(tc.istioConfig)
@@ -244,9 +244,9 @@ func TestReconcileExposure(t *testing.T) {
 	for i, tc := range tt {
 		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
 			if tc.style != "" {
-				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style)
+				os.Setenv(mcmodel.IstioConversionStyleKey, tc.style) // nolint: errcheck
 			} else {
-				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle)
+				os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.EgressIngressStyle) // nolint: errcheck
 			}
 
 			cs, err := createDebugConfigStore(tc.istioConfig)
@@ -331,7 +331,7 @@ func loadConfig(fname string, t *testing.T) *istiomodel.Config {
 	configs := loadConfigList(fname, t)
 
 	if len(configs) != 1 {
-		t.Fatal(fmt.Errorf("Expected 1 config, got %d", len(configs)))
+		t.Fatal(fmt.Errorf("expected 1 config, got %d", len(configs)))
 	}
 
 	return &configs[0]
@@ -453,7 +453,7 @@ func createDebugConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore
 
 func checkEqualConfigs(configs []istiomodel.Config, expected []istiomodel.Config) error {
 	if len(configs) != len(expected) {
-		return fmt.Errorf("Configurations don't match: different number of elements %d vs expected %d (%#v vs expected %#v)",
+		return fmt.Errorf("configurations don't match: different number of elements %d vs expected %d (%#v vs expected %#v)",
 			len(configs), len(expected), configs, expected)
 	}
 
@@ -461,21 +461,21 @@ func checkEqualConfigs(configs []istiomodel.Config, expected []istiomodel.Config
 	for _, config := range configs {
 		lookupName, ok := lookup[config.Namespace]
 		if !ok {
-			return fmt.Errorf("Configuration in namespace %q unexpected", config.Namespace)
+			return fmt.Errorf("configuration in namespace %q unexpected", config.Namespace)
 		}
 		lookupType, ok := lookupName[config.Name]
 		if !ok {
-			return fmt.Errorf("Configuration name %s.%s unexpected", config.Name, config.Namespace)
+			return fmt.Errorf("configuration name %s.%s unexpected", config.Name, config.Namespace)
 		}
 		expectedConfig, ok := lookupType[config.Type]
 		if !ok {
-			return fmt.Errorf("Configuration %s.%s type %s unexpected", config.Name, config.Namespace, config.Type)
+			return fmt.Errorf("configuration %s.%s type %s unexpected", config.Name, config.Namespace, config.Type)
 		}
 		// The metadata will be close enough because it was looked up, only compare the Specs
 		if !reflect.DeepEqual(config.Spec, expectedConfig.Spec) {
 			wanted, _ := json.Marshal(expectedConfig.Spec)
 			got, _ := json.Marshal(config.Spec)
-			return fmt.Errorf("Configuration of %s %s.%s %s unexpected (expected %s)", config.Type, config.Name, config.Namespace, string(got), string(wanted))
+			return fmt.Errorf("configuration of %s %s.%s %s unexpected (expected %s)", config.Type, config.Name, config.Namespace, string(got), string(wanted))
 		}
 	}
 
@@ -507,7 +507,7 @@ func indexConfigs(configs []istiomodel.Config) map[string]map[string]map[string]
 
 func checkEqualConfigMetas(configs []istiomodel.Config, expected []istiomodel.Config) error {
 	if len(configs) != len(expected) {
-		return fmt.Errorf("Configurations don't match: different number of elements %d vs %d (%#v vs %#v)",
+		return fmt.Errorf("configurations don't match: different number of elements %d vs %d (%#v vs %#v)",
 			len(configs), len(expected), configs, expected)
 	}
 
@@ -515,15 +515,15 @@ func checkEqualConfigMetas(configs []istiomodel.Config, expected []istiomodel.Co
 	for _, config := range configs {
 		lookupName, ok := lookup[config.Namespace]
 		if !ok {
-			return fmt.Errorf("Configuration in namespace %q unexpected", config.Namespace)
+			return fmt.Errorf("configuration in namespace %q unexpected", config.Namespace)
 		}
 		lookupType, ok := lookupName[config.Name]
 		if !ok {
-			return fmt.Errorf("Configuration name %s.%s unexpected", config.Name, config.Namespace)
+			return fmt.Errorf("configuration name %s.%s unexpected", config.Name, config.Namespace)
 		}
 		_, ok = lookupType[config.Type]
 		if !ok {
-			return fmt.Errorf("Configuration %s.%s type %s unexpected", config.Name, config.Namespace, config.Type)
+			return fmt.Errorf("configuration %s.%s type %s unexpected", config.Name, config.Namespace, config.Type)
 		}
 		// We only check ConfigMeta and ignore .Spec
 	}
@@ -550,7 +550,7 @@ func (ci debugClusterInfo) Port(name string) uint32 {
 
 func checkEqualServices(svcs []kube_v1.Service, expected []kube_v1.Service) error {
 	if len(svcs) != len(expected) {
-		return fmt.Errorf("Service definitions don't match: different number of elements %d vs expected %d (%#v vs expected %#v)",
+		return fmt.Errorf("service definitions don't match: different number of elements %d vs expected %d (%#v vs expected %#v)",
 			len(svcs), len(expected), svcs, expected)
 	}
 
@@ -558,13 +558,13 @@ func checkEqualServices(svcs []kube_v1.Service, expected []kube_v1.Service) erro
 	for _, svc := range svcs {
 		expectedSvc, ok := lookup[svcIndex(svc)]
 		if !ok {
-			return fmt.Errorf("Service %s.%s (kind %s) unexpected", svc.Name, svc.Namespace, svc.Kind)
+			return fmt.Errorf("service %s.%s (kind %s) unexpected", svc.Name, svc.Namespace, svc.Kind)
 		}
 		// The metadata will be close enough because it was looked up, only compare the Specs
 		if !reflect.DeepEqual(svc.Spec, expectedSvc.Spec) {
 			wanted, _ := json.Marshal(expectedSvc.Spec)
 			got, _ := json.Marshal(svc.Spec)
-			return fmt.Errorf("Configuration of %s %s.%s %s unexpected (expected %s)", svc.Kind, svc.Name, svc.Namespace, string(got), string(wanted))
+			return fmt.Errorf("configuration of %s %s.%s %s unexpected (expected %s)", svc.Kind, svc.Name, svc.Namespace, string(got), string(wanted))
 		}
 	}
 

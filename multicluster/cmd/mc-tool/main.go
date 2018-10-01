@@ -105,11 +105,7 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 		istiomodel.ServiceEntry,
 	}
 	err = writeIstioYAMLOutput(configDescriptor, istioConfig, writer)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // convertToGo converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to

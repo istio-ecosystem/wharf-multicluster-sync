@@ -10,8 +10,11 @@ IMAGE_TAG:=develop
 
 # Go parameters
 GOCMD=go
+
+# Lint
+gometalinter=gometalinter.v2
    
-all: test
+all: test lint
 
 test: 
 	$(GOCMD) test -v ./...
@@ -27,3 +30,6 @@ build:
 	
 push:
 	docker push $(DOCKER_REPO)/mcagent:$(IMAGE_TAG)
+	
+lint:
+	$(gometalinter) --config=../lintconfig_base.json ./...

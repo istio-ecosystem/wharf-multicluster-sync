@@ -1,4 +1,4 @@
-# Consume reviews, any version, from cluster2
+# Consume reviews-v1, from cluster2
 apiVersion: multicluster.istio.io/v1alpha1
 kind: RemoteServiceBinding
 metadata:

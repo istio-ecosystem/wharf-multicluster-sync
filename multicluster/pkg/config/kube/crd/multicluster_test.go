@@ -77,7 +77,7 @@ func checkParsedTypes(reader io.Reader, typs []string) error {
 	}
 
 	if !reflect.DeepEqual(typs, typsParsed) {
-		return fmt.Errorf("Expected %#v, parsed %#v\n", typs, typsParsed)
+		return fmt.Errorf("expected %#v, parsed %#v", typs, typsParsed)
 	}
 
 	return nil
@@ -168,29 +168,25 @@ func readAndConvert(reader io.Reader, writer io.Writer, clusterConfig *agent.Clu
 	for _, istioConfig := range istioConfigs {
 		schema, exists := configDescriptor.GetByType(istioConfig.Type)
 		if !exists {
-			return fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(istioConfig.Type), istioConfig.Name)
+			return fmt.Errorf("unknown kind %q for %v", istiocrd.ResourceName(istioConfig.Type), istioConfig.Name)
 		}
 
 		err = schema.Validate(istioConfig.Name, istioConfig.Namespace, istioConfig.Spec)
 		if err != nil {
-			return multierror.Prefix(err, fmt.Sprintf("Generated %s %s/%s does not validate",
+			return multierror.Prefix(err, fmt.Sprintf("generated %s %s/%s does not validate",
 				istioConfig.Type, istioConfig.Namespace, istioConfig.Name))
 		}
 	}
 
 	err = writeIstioYAMLOutput(configDescriptor, istioConfigs, writer)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func configToIstioObj(descriptor istiomodel.ConfigDescriptor, config istiomodel.Config) (IstioObject, error) {
 	// Does config wrap an Istio object?
 	schema, exists := descriptor.GetByType(config.Type)
 	if !exists {
-		return nil, fmt.Errorf("Unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
+		return nil, fmt.Errorf("unknown kind %q for %v", istiocrd.ResourceName(config.Type), config.Name)
 	}
 
 	// the memory ConfigStore uses the Date as the ResourceVersion making testing nonrepeatable
@@ -200,7 +196,7 @@ func configToIstioObj(descriptor istiomodel.ConfigDescriptor, config istiomodel.
 
 	obj, err := istiocrd.ConvertConfig(schema, config)
 	if err != nil {
-		return nil, fmt.Errorf("Could not decode %v: %v", config.Name, err)
+		return nil, fmt.Errorf("could not decode %v: %v", config.Name, err)
 	}
 
 	return obj, nil
@@ -209,9 +205,13 @@ func configToIstioObj(descriptor istiomodel.ConfigDescriptor, config istiomodel.
 func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomodel.Config, writer io.Writer) error {
 	for i, config := range configs {
 		obj, err := configToIstioObj(descriptor, config)
+		if err != nil {
+			log.Errorf("could not convert %v to Istio Object: %v", config, err)
+			continue
+		}
 		bytes, err := yaml.Marshal(obj)
 		if err != nil {
-			log.Errorf("Could not convert %v to YAML: %v", config, err)
+			log.Errorf("could not convert %v to YAML: %v", config, err)
 			continue
 		}
 		writer.Write(bytes) // nolint: errcheck
@@ -245,7 +245,7 @@ func loadConfig(file string) (*agent.ClusterConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer jsonFile.Close()
+	defer jsonFile.Close() // nolint: errcheck
 
 	var config agent.ClusterConfig
 	bytes, _ := ioutil.ReadAll(jsonFile)
