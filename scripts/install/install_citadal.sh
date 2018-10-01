@@ -11,6 +11,7 @@ kubectl --context ${ROOTCA_NAME} get nodes
 
 # Install the ROOT CA
 kubectl --context ${ROOTCA_NAME} apply -f istio-citadel-standalone.yaml
+rootca_host=`kubectl --context ${ROOTCA_NAME} get service standalone-citadel -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 
 NAMESPACE="istio-system"
 B64_DECODE=${BASE64_DECODE:-base64 --decode}
