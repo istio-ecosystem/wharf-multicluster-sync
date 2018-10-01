@@ -54,4 +54,5 @@ EOF
 set -e
 	
 # Create Pod
-kubectl --context $CLIENT_CLUSTER apply ../../install/deploy.yaml
+kubectl --context $CLIENT_CLUSTER apply -f deploy.yaml
+kubectl --context $CLIENT_CLUSTER apply -f mc_gateways.yaml

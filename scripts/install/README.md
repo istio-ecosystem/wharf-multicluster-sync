@@ -8,7 +8,7 @@ run `kubectl --context <ctx1> get pods`, for three contexts.
 If you are using $KUBECONFIG you can export multiple config files for this behavior, e.g.
 
 ```
-export KUBECONFIG=$KUBECONFIG1:$KUBECONFIG2:KUBECONFIG3
+export KUBECONFIG=$KUBECONFIG1:$KUBECONFIG2:$KUBECONFIG3
 ```
 
 To setup the test environments run the following, replacing _ctx-ca_, _ctx1_, and _ctx2_ with your cluster names:
@@ -27,9 +27,10 @@ The _install_citadel.sh_ script will configure $CLUSTER1 and $CLUSTER2 to use Ci
 
 # Run the demo agents on the Istio control planes
 
-First, we configure the agents.  Next, deploy them
+First, we configure the agents.  Next, deploy them.  For this demo we will make $CLUSTER1
+a client of $CLUSTER2.
 
 ```
-kubectl create -f sample/sample_configmap.yaml
-kubectl create -f sample/deploy.yaml
+./deploy_cluster.sh $CLUSTER1 $CLUSTER2
 ```
+

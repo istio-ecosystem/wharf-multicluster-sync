@@ -1,0 +1,479 @@
+---
+# Source: istio/charts/gateways/templates/serviceaccount.yaml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istio-mc-egressgateway-service-account
+  namespace: istio-system
+  labels:
+    app: mc-egressgateway
+    chart: gateways-1.0.0
+    heritage: Tiller
+    release: istio
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istio-mc-ingressgateway-service-account
+  namespace: istio-system
+  labels:
+    app: mc-ingressgateway
+    chart: gateways-1.0.0
+    heritage: Tiller
+    release: istio
+---
+
+---
+# Source: istio/charts/gateways/templates/clusterrole.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  labels:
+    app: gateways
+    chart: gateways-1.0.0
+    heritage: Tiller
+    release: istio
+  name: istio-mc-egressgateway-istio-system
+rules:
+- apiGroups: ["extensions"]
+  resources: ["thirdpartyresources", "virtualservices", "destinationrules", "gateways"]
+  verbs: ["get", "watch", "list", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  labels:
+    app: gateways
+    chart: gateways-1.0.0
+    heritage: Tiller
+    release: istio
+  name: istio-mc-ingressgateway-istio-system
+rules:
+- apiGroups: ["extensions"]
+  resources: ["thirdpartyresources", "virtualservices", "destinationrules", "gateways"]
+  verbs: ["get", "watch", "list", "update"]
+---
+
+---
+# Source: istio/charts/gateways/templates/clusterrolebindings.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-mc-egressgateway-istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-mc-egressgateway-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istio-mc-egressgateway-service-account
+    namespace: istio-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-mc-ingressgateway-istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-mc-ingressgateway-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istio-mc-ingressgateway-service-account
+    namespace: istio-system
+---
+
+---
+# Source: istio/charts/gateways/templates/service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-mc-egressgateway
+  namespace: istio-system
+  annotations:
+  labels:
+    chart: gateways-1.0.0
+    release: istio
+    heritage: Tiller
+    app: istio-mc-egressgateway
+    istio: mc-egressgateway
+spec:
+  type: ClusterIP
+  selector:
+    app: istio-mc-egressgateway
+    istio: mc-egressgateway
+  ports:
+    -
+      name: http2
+      port: 80
+    -
+      name: https
+      port: 443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-mc-ingressgateway
+  namespace: istio-system
+  annotations:
+  labels:
+    chart: gateways-1.0.0
+    release: istio
+    heritage: Tiller
+    app: istio-mc-ingressgateway
+    istio: mc-ingressgateway
+spec:
+  type: LoadBalancer
+  selector:
+    app: istio-mc-ingressgateway
+    istio: mc-ingressgateway
+  ports:
+    -
+      name: http2
+      port: 80
+    -
+      name: https
+      port: 443
+    -
+      name: tcp
+      port: 31400
+---
+
+---
+# Source: istio/charts/gateways/templates/deployment.yaml
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: istio-mc-egressgateway
+  namespace: istio-system
+  labels:
+    app: istio-mc-egressgateway
+    istio: mc-egressgateway
+    chart: gateways-1.0.0
+    release: istio
+    version: 1.0.0
+    heritage: Tiller
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: istio-mc-egressgateway
+        istio: mc-egressgateway
+      annotations:
+        sidecar.istio.io/inject: "false"
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+    spec:
+      serviceAccountName: istio-mc-egressgateway-service-account
+      containers:
+        - name: istio-proxy
+          image: "gcr.io/istio-release/proxyv2:release-1.0-latest-daily"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          args:
+          - proxy
+          - router
+          - --log_output_level
+          - 'info'
+          - --discoveryRefreshDelay
+          - '1s' #discoveryRefreshDelay
+          - --drainDuration
+          - '45s' #drainDuration
+          - --parentShutdownDuration
+          - '1m0s' #parentShutdownDuration
+          - --connectTimeout
+          - '10s' #connectTimeout
+          - --serviceCluster
+          - istio-mc-egressgateway
+          - --zipkinAddress
+          - zipkin.istio-system:9411
+          - --proxyAdminPort
+          - "15000"
+          - --controlPlaneAuthPolicy
+          - NONE
+          - --discoveryAddress
+          - istio-pilot.istio-system:8080
+          resources:
+            requests:
+              cpu: 10m
+            
+          env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: INSTANCE_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: ISTIO_META_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          volumeMounts:
+          - name: istio-certs
+            mountPath: /etc/certs
+            readOnly: true
+          - name: mc-egressgateway-certs
+            mountPath: "/etc/istio/mc-egressgateway-certs"
+            readOnly: true
+          - name: mc-egressgateway-ca-certs
+            mountPath: "/etc/istio/mc-egressgateway-ca-certs"
+            readOnly: true
+      volumes:
+      - name: istio-certs
+        secret:
+          secretName: istio.istio-mc-egressgateway-service-account
+          optional: true
+      - name: mc-egressgateway-certs
+        secret:
+          secretName: "istio-mc-egressgateway-certs"
+          optional: true
+      - name: mc-egressgateway-ca-certs
+        secret:
+          secretName: "istio-mc-egressgateway-ca-certs"
+          optional: true
+      affinity:      
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: istio-mc-ingressgateway
+  namespace: istio-system
+  labels:
+    app: istio-mc-ingressgateway
+    istio: mc-ingressgateway
+    chart: gateways-1.0.0
+    release: istio
+    version: 1.0.0
+    heritage: Tiller
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: istio-mc-ingressgateway
+        istio: mc-ingressgateway
+      annotations:
+        sidecar.istio.io/inject: "false"
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+    spec:
+      serviceAccountName: istio-mc-ingressgateway-service-account
+      containers:
+        - name: istio-proxy
+          image: "gcr.io/istio-release/proxyv2:release-1.0-latest-daily"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+            - containerPort: 31400
+          args:
+          - proxy
+          - router
+          - --log_output_level
+          - 'info'
+          - --discoveryRefreshDelay
+          - '1s' #discoveryRefreshDelay
+          - --drainDuration
+          - '45s' #drainDuration
+          - --parentShutdownDuration
+          - '1m0s' #parentShutdownDuration
+          - --connectTimeout
+          - '10s' #connectTimeout
+          - --serviceCluster
+          - istio-mc-ingressgateway
+          - --zipkinAddress
+          - zipkin.istio-system:9411
+          - --proxyAdminPort
+          - "15000"
+          - --controlPlaneAuthPolicy
+          - NONE
+          - --discoveryAddress
+          - istio-pilot.istio-system:8080
+          resources:
+            requests:
+              cpu: 10m
+            
+          env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: INSTANCE_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: ISTIO_META_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          volumeMounts:
+          - name: istio-certs
+            mountPath: /etc/certs
+            readOnly: true
+          - name: mc-ingressgateway-certs
+            mountPath: "/etc/istio/mc-ingressgateway-certs"
+            readOnly: true
+          - name: mc-ingressgateway-ca-certs
+            mountPath: "/etc/istio/mc-ingressgateway-ca-certs"
+            readOnly: true
+      volumes:
+      - name: istio-certs
+        secret:
+          secretName: istio.istio-mc-ingressgateway-service-account
+          optional: true
+      - name: mc-ingressgateway-certs
+        secret:
+          secretName: "istio-mc-ingressgateway-certs"
+          optional: true
+      - name: mc-ingressgateway-ca-certs
+        secret:
+          secretName: "istio-mc-ingressgateway-ca-certs"
+          optional: true
+      affinity:      
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+---
+
+---
+# Source: istio/charts/gateways/templates/autoscale.yaml
+
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+    name: istio-mc-egressgateway
+    namespace: istio-system
+spec:
+    maxReplicas: 5
+    minReplicas: 1
+    scaleTargetRef:
+      apiVersion: apps/v1beta1
+      kind: Deployment
+      name: istio-mc-egressgateway
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          targetAverageUtilization: 60
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+    name: istio-mc-ingressgateway
+    namespace: istio-system
+spec:
+    maxReplicas: 5
+    minReplicas: 1
+    scaleTargetRef:
+      apiVersion: apps/v1beta1
+      kind: Deployment
+      name: istio-mc-ingressgateway
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          targetAverageUtilization: 60
+---
+
+---
+# Source: istio/charts/telemetry-gateway/templates/gateway.yaml
+
+
+---
+# Source: istio/templates/configmap.yaml
+
+
+---
+# Source: istio/templates/crds.yaml
+# 
+---
+# Source: istio/templates/install-custom-resources.sh.tpl
+
+
+---
+# Source: istio/templates/sidecar-injector-configmap.yaml
+
+

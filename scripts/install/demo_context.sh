@@ -13,21 +13,21 @@ export CLUSTER1=$2
 export CLUSTER2=$3
 export ROOTCA_NAME=$1
 
-echo Checking $ROOTCA_NAME
+echo Checking ROOTCA $ROOTCA_NAME
 if ! kubectl --context $ROOTCA_NAME version --short=true ; then
    echo $ROOTCA_NAME not accessable
    return
 fi
 
-echo Checking $CLUSTER1
+echo Checking CLUSTER1 $CLUSTER1
 if ! kubectl --context $CLUSTER1 version --short=true ; then
    echo $CLUSTER1 not accessable
    return
 fi
 
-echo Checking $CLUSTER2
+echo Checking CLUSTER2 $CLUSTER2
 if ! kubectl --context $CLUSTER2 version --short=true ; then
-   echo $CLUSTER1 not accessable
+   echo $CLUSTER2 not accessable
    return
 fi
 
