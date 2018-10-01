@@ -35,4 +35,9 @@ do
   kubectl --context ${CLUSTER} create secret generic cacerts -n istio-system \
           --from-file=${DIR}/ca-cert.pem --from-file=${DIR}/ca-key.pem \
           --from-file=${DIR}/root-cert.pem --from-file=${DIR}/cert-chain.pem
+
+
+  kubectl --context ${CLUSTER} delete  deployment  -n istio-system  istio-citadel
+  sed -e "s/__CLUSTERNAME__/${CLUSTER}/g;s/__ROOTCA_HOST__/${rootca_host}/g" istio-citadel-new.yaml | kubectl --context ${CLUSTER} apply -f -
+  kubectl --context ${CLUSTER} apply -f  istio-auto-injection.yaml || true
 done
