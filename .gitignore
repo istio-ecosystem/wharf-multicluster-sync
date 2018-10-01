@@ -9,6 +9,7 @@ multicluster/pkg/test/generated/*.yaml
 
 # Binaries we build
 multicluster/cmd/mc-tool/mc-tool
+multicluster/build/docker/mcagent
 
 # Logs we generate
 scripts/clusters/*.log
