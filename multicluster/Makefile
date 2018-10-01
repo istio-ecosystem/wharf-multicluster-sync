@@ -4,8 +4,8 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 # Copyright 2018 IBM Corporation
 
-# Docker image and hub parameters. Replace with a vaild repository.
-DOCKER_REPO=docker.io/mc
+# Docker image and hub parameters. Replace with a valid repository.
+DOCKER_REPO ?= docker.io/mc
 IMAGE_TAG:=develop
 
 # Go parameters
@@ -13,7 +13,9 @@ GOCMD=go
 
 # Lint
 gometalinter=gometalinter.v2
-   
+
+.PHONY: build
+
 all: test lint
 
 test: 

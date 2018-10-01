@@ -51,7 +51,7 @@ func ConvertBindingsAndExposures(mcs []istiomodel.Config, ci ClusterInfo, store 
 }
 
 // ConvertBindingsAndExposures2 converts desired multicluster state into Kubernetes and Istio state
-func ConvertBindingsAndExposures2(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service) ([]istiomodel.Config, []kube_v1.Service, error) {
+func ConvertBindingsAndExposures2(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service) ([]istiomodel.Config, []kube_v1.Service, error) { // nolint: lll
 	if os.Getenv(IstioConversionStyleKey) == DirectIngressStyle {
 		return ConvertBindingsAndExposuresDirectIngress(mcs, ci, store, svcs)
 	}
