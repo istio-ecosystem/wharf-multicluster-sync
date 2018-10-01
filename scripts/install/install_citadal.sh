@@ -18,14 +18,17 @@ B64_DECODE=${BASE64_DECODE:-base64 --decode}
 for CLUSTER in ${CLUSTER1_NAME} ${CLUSTER2_NAME} ${CLUSTER3_NAME}
 do
   kubectl --context ${ROOTCA_NAME} -n istio-system create serviceaccount istio-citadel-service-account-${CLUSTER} || true
-  ###
-  ### kubectl --context ${CLUSTER} apply -f ${ISTIODIR}/install/kubernetes/helm/istio/templates/crds.yaml
-  sleep 10
 
   SERVICE_ACCOUNT="istio-citadel-service-account-${CLUSTER}"
   CERT_NAME="istio.${SERVICE_ACCOUNT}"
   DIR="/tmp/ca/${CLUSTER}"
   mkdir -p $DIR
+
+  until kubectl --context ${ROOTCA_NAME} get -n ${NAMESPACE} secret ${CERT_NAME}
+  do
+    echo "waiting for the cert to be generated ..."
+    sleep 1
+  done
 
   kubectl --context ${ROOTCA_NAME} get -n ${NAMESPACE} secret $CERT_NAME -o jsonpath='{.data.root-cert\.pem}' | $B64_DECODE   > ${DIR}/root-cert.pem
   kubectl --context ${ROOTCA_NAME} get -n ${NAMESPACE} secret $CERT_NAME -o jsonpath='{.data.cert-chain\.pem}' | $B64_DECODE  > ${DIR}/cert-chain.pem
