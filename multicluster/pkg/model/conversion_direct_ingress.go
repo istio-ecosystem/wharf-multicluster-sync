@@ -23,7 +23,7 @@ import (
 
 // ConvertBindingsAndExposuresDirectIngress converts a list of multicluster SEP and RDS configuration
 // into Istio configuration.  It may consult existing Istio configuration in 'store' (e.g. DestinationRule subsets)
-func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service) ([]istiomodel.Config, []kube_v1.Service, error) {
+func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service) ([]istiomodel.Config, []kube_v1.Service, error) { // nolint: lll
 	out := make([]istiomodel.Config, 0)
 	outServices := make([]kube_v1.Service, 0)
 
@@ -173,7 +173,7 @@ func convertRSBDirectIngress(config istiomodel.Config, rsb *v1alpha1.RemoteServi
 }
 
 // serviceToServiceEntry() creates a ServiceEntry pointing to istio-egressgateway
-func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, serviceEntries map[string]*istiomodel.Config, ip string, port uint32) *istiomodel.Config {
+func serviceToServiceEntryDirectIngress(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, config istiomodel.Config, serviceEntries map[string]*istiomodel.Config, ip string, port uint32) *istiomodel.Config { // nolint: lll
 	hostname := rsHostname(rs)
 	protocol := "http"
 	serviceEntry, ok := serviceEntries[hostname]

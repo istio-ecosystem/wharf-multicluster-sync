@@ -114,7 +114,7 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 }
 
 // readAndConvertDirectIngress converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, clusterConfig *agent.ClusterConfig, store istiomodel.ConfigStore, svcStore []kube_v1.Service) error {
+func readAndConvertDirectIngress(reader io.Reader, writer io.Writer, clusterConfig *agent.ClusterConfig, store istiomodel.ConfigStore, svcStore []kube_v1.Service) error { // nolint: lll
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
