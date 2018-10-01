@@ -3,7 +3,8 @@ export  KUBECONFIG=~/Sandbox/mb1_admin.conf:/Users/mb/.bluemix/plugins/container
 export MB="kubernetes-admin@kubernetes"
 export CLUSTER1_NAME="free1"
 export CLUSTER2_NAME="test-multizone"
-export ROOTCA_NAME="istio-test-paid"
+#export ROOTCA_NAME="istio-test-paid"
+export ROOTCA_NAME="test-multizone"
 export CLUSTER3_NAME="istio-test-paid2"
 
 export ISTIODIR="/Users/mb/Repos/istio-1.0.2"
