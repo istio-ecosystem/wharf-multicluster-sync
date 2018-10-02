@@ -27,6 +27,8 @@ The _install_citadel.sh_ script will configure $CLUSTER1 and $CLUSTER2 to use Ci
 
 # Run the Multi-Cluster agents on demo clusters
 
+(For this demo we are running the multi-cluster control plane outside of Istio.  The intention is to move it into Pilot and Galley.)
+
 In this demo we have Cluster 1 watching exposed services on Cluster 2.
 For this purpose we need to deploy the MC agent on both clusters and configure Cluster 1's agent
 to peer with Cluster 2's agent.
@@ -46,3 +48,21 @@ We then configure and deploy the agent on `$CLUSTER1` and ask it to peer with `$
 
 The script will get the relevant information (Istio Gateway and MC Agent IP addresses) from Cluster 1 and use it in the peer configuration.
 
+# Tutorials
+
+Now that the Multicluster control plane has been configured we can run demos
+
+- [Book Info](../tutorial/bookinfo/README.md)
+
+# Cleanup
+
+No instructions are provided for removing the root CA sharing.  If you wish to return to the
+original you should reinstall Istio on your clusters.
+
+To cleanup the multicluster agents,
+
+
+```
+kubectl --context $CLUSTER1 delete -f deploy.yaml 
+kubectl --context $CLUSTER2 delete -f deploy.yaml 
+```
