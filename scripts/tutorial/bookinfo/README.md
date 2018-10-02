@@ -15,7 +15,7 @@ kubectl --context $CLUSTER1 apply -f bookinfo-gateway.yaml
 kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v1.yaml
 ```
 
-![alt text](/raw/master/scripts/tutorial/bookinfo/bookinfo-unconnected.png "Unconnected Bookinfo")
+![Unconnected Bookinfo](bookinfo-unconnected.png?raw=true "Unconnected Bookinfo")
 
 ## Before the services are connected
 
@@ -24,7 +24,7 @@ Follow the instructions at https://istio.io/docs/examples/bookinfo/#determining-
 Browse to http://${GATEWAY_URL}/productpage to verify that bookinfo is connected and that
 details are present but not reviews.
 
-![alt text](/raw/master/scripts/tutorial/bookinfo/ui-unconnected.png "Unconnected UI")
+![Unconnected UI](ui-unconnected.png?raw=true "Unconnected UI")
 
 ## Expose reviews-v1 on cluster2
 
@@ -75,7 +75,7 @@ kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 
 ## Verify that the reviews is present in the UI
 
-![alt text](ui-connected.png?raw=true "Connected UI")
+![Connected UI](ui-connected.png?raw=true "Connected UI")
 
 Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews are present.
 
