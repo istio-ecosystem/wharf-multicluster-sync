@@ -72,7 +72,7 @@ metadata:
     istio: multi-cluster-agent
 data:
   config.yaml: |
-      ID: $CLIENT_NAME
+      ID: $CLIENT_ID
       GatewayIP: $CLIENT_IP
       GatewayPort: 80
       AgentPort: 8999
