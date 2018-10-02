@@ -75,7 +75,7 @@ kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 
 ## Verify that the reviews is present in the UI
 
-![alt text](/raw/master/scripts/tutorial/bookinfo/ui-connected.png "Connected UI")
+![alt text](ui-connected.png?raw=true "Connected UI")
 
 Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews are present.
 
