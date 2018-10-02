@@ -40,10 +40,11 @@ We first deploy the agent to `$CLUSTER2` which doesn't watch any other clusters 
 ```
 > We need to configure cluster 2 first because the assigned LoadBalancer IP address to the agent service needs to be used for configuring the agent on cluster 1.
 
-We then configure and deploy the agent on `$CLUSTER1` and ask it to peer with `$CLUSTER2` (the 2nd argument):
+We then configure and deploy the agent on `$CLUSTER1` and ask it to peer with `$CLUSTER2` (the 2nd argument).  We also reconfigure the agent on cluster2 now that cluster1 is configured.
 
 ```
 ./deploy_cluster.sh $CLUSTER1 $CLUSTER2
+./deploy_cluster.sh $CLUSTER2 $CLUSTER1
 ```
 
 The script will get the relevant information (Istio Gateway and MC Agent IP addresses) from Cluster 1 and use it in the peer configuration.

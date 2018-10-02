@@ -11,10 +11,11 @@ The _reviews_ (version:v1) will be on cluster2
 
 ```
 kubectl --context $CLUSTER1 apply -f bookinfo-norating-noreviews.yaml
-kubectl --context $CLUSTER1 apply -f bookinfo-norating-noreviews.yaml
+kubectl --context $CLUSTER1 apply -f bookinfo-gateway.yaml
+kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v1.yaml
 ```
 
-![alt text](/istio-research/multicluster-roadmap/tree/master/scripts/tutorials/bookinfo/bookinfo-unconnected.png "Unconnected Bookinfo")
+![alt text](/raw/master/scripts/tutorial/bookinfo/bookinfo-unconnected.png "Unconnected Bookinfo")
 
 ## Before the services are connected
 
@@ -30,7 +31,7 @@ TODO PICTURE OF BOOKINFO WITHOUT REVIEWS
 We will create a Service Exposition Policy to expose reviews-v1 on cluster2 to services on cluster1.
 
 ```
-kubectl apply -f reviews-exposure.yaml
+kubectl --context $CLUSTER2 apply -f reviews-exposure.yaml
 ```
 
 The policy we are applying looks like
