@@ -71,7 +71,7 @@ func (s *Server) handlePoliciesReq(w http.ResponseWriter, req *http.Request) {
 	clusterID := vars["clusterID"]
 
 	if !s.isTrustedCluster(clusterID) {
-		err := fmt.Errorf("Operation can not be completed. Cluster not identified")
+		err := fmt.Errorf("operation can not be completed. Cluster not identified")
 		RenderError(w, http.StatusForbidden, err)
 		return
 	}

@@ -13,6 +13,9 @@ import (
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+// ConfigsManagement provides functions for handling changes in Multi-cluster
+// configs. Managing the life-cycle of MC configs by calling the functions here
+// will make sure all reconciled resources will also be handled accordingly.
 type ConfigsManagement struct {
 	istioStore    model.ConfigStore
 	kubeconfig    string
@@ -20,6 +23,7 @@ type ConfigsManagement struct {
 	clusterConfig *ClusterConfig
 }
 
+// NewConfigsManagement creates a new instance for the configs management
 func NewConfigsManagement(kubeconfig, context string, istioStore model.ConfigStore, clusterConfig *ClusterConfig) *ConfigsManagement {
 	return &ConfigsManagement{
 		istioStore:    istioStore,
@@ -29,6 +33,7 @@ func NewConfigsManagement(kubeconfig, context string, istioStore model.ConfigSto
 	}
 }
 
+// McConfigAdded should be called when a a Multi-cluster config has been added
 func (cm *ConfigsManagement) McConfigAdded(config model.Config) {
 	nsClient, err := makeK8sServicesClient(cm.kubeconfig, cm.context, config.Namespace)
 	if err != nil {
@@ -49,6 +54,7 @@ func (cm *ConfigsManagement) McConfigAdded(config model.Config) {
 	storeK8sConfigs(changes.Kubernetes, nsClient)
 }
 
+// McConfigDeleted should be called when a a Multi-cluster config has been deleted
 func (cm *ConfigsManagement) McConfigDeleted(config model.Config) {
 	nsClient, err := makeK8sServicesClient(cm.kubeconfig, cm.context, config.Namespace)
 	if err != nil {
@@ -69,6 +75,7 @@ func (cm *ConfigsManagement) McConfigDeleted(config model.Config) {
 	storeK8sConfigs(changes.Kubernetes, nsClient)
 }
 
+// McConfigModified should be called when a a Multi-cluster config has been modified
 func (cm *ConfigsManagement) McConfigModified(config model.Config) {
 	nsClient, err := makeK8sServicesClient(cm.kubeconfig, cm.context, config.Namespace)
 	if err != nil {

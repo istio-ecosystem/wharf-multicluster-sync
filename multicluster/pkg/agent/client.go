@@ -186,13 +186,13 @@ func (c *Client) callPeer() (*ExposedServices, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Response status code is not OK")
+		return nil, fmt.Errorf("response status code is not OK")
 	}
 
 	exposed := &ExposedServices{}
 	err = json.NewDecoder(resp.Body).Decode(exposed)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode the response JSON: %v", err)
+		return nil, fmt.Errorf("failed to decode the response JSON: %v", err)
 	}
 	return exposed, nil
 }

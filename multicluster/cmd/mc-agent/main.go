@@ -61,7 +61,7 @@ func main() {
 		clusterConfig, err = loadConfig(configYAML, true)
 		configWatcher = launchConfigWatcher(configYAML, true)
 	} else {
-		err = fmt.Errorf("Cluster configuration file must be provided with the -configJson or -configYaml flag")
+		err = fmt.Errorf("cluster configuration file must be provided with the -configJson or -configYaml flag")
 	}
 	if err != nil {
 		log.Errora(err)
@@ -160,6 +160,10 @@ func main() {
 
 	log.Debugf("Starting agent listener on port %d..", clusterConfig.AgentPort)
 	server, err := agent.NewServer(clusterConfig, mcStore)
+	if err != nil {
+		log.Errora(err)
+		return
+	}
 	go server.Run()
 
 	log.Debugf("Starting agent clients. Number of peers: %d", len(clusterConfig.WatchedPeers))
@@ -236,8 +240,8 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					//Config file modified
 					log.Debug("Config file modified. Reloading.")
-					newClusterConfig, err := loadConfig(file, isYaml)
-					if err != nil {
+					newClusterConfig, lderr := loadConfig(file, isYaml)
+					if lderr != nil {
 						log.Error("Failed to reload the config file")
 						continue
 					}

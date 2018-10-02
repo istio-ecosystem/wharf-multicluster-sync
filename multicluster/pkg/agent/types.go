@@ -1,8 +1,18 @@
 package agent
 
 const (
-	ConnectionModeKey       = "connection"
-	ConnectionModeLive      = "live"
+	// ConnectionModeKey is the labels key within the RemoteServiceBinding that
+	// holds the mode for handling the Istio configs (from below modes)
+	ConnectionModeKey = "connection"
+
+	// ConnectionModeLive will imply that the reconciler will be called
+	// automatically whenever a change in an RemoteServiceBinding has been
+	// determined
+	ConnectionModeLive = "live"
+
+	// ConnectionModePotential will imply that the reconciler will NOT be
+	// called whenever a change in an RemoteServiceBinding has been determined.
+	// Istio configs will be generated once the mode is switched to 'live'.
 	ConnectionModePotential = "potential"
 )
 
