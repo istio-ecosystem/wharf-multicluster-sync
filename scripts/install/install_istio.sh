@@ -7,13 +7,13 @@ SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 ISTIODIR="/Users/mb/Repos/istio-1.0.2"
 
 # To make sure we can ccess all clusters
-kubectl --context ${CLUSTER1_NAME} get nodes
-kubectl --context ${CLUSTER2_NAME} get nodes
-kubectl --context ${CLUSTER3_NAME} get nodes
-kubectl --context ${ROOTCA_NAME} get nodes
+kubectl --context ${CLUSTER0} get nodes
+kubectl --context ${CLUSTER1} get nodes
+kubectl --context ${CLUSTER2} get nodes
+kubectl --context ${CLUSTER3} get nodes
 
 # Installing Cluster 1 
-for CLUSTER in ${CLUSTER1_NAME} ${CLUSTER2_NAME} ${CLUSTER3_NAME}
+for CLUSTER in ${CLUSTER1} ${CLUSTER2} ${CLUSTER3}
 do
 
    echo "on cluster" ${CLUSTER} " ..................................................................."
