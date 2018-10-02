@@ -11,10 +11,18 @@ If you are using $KUBECONFIG you can export multiple config files for this behav
 export KUBECONFIG=$KUBECONFIG1:$KUBECONFIG2:$KUBECONFIG3
 ```
 
-To setup the test environments run the following, replacing _ctx-ca_, _ctx1_, and _ctx2_ with your cluster names:
+For this demo we will give our Kubernetes contexts names matching the their role for the demo.
 
 ```
-source ./demo_context.sh ctx-ca ctx1 ctx2
+kubectl config rename-context <ctx1> cluster1
+kubectl config rename-context <ctx2> cluster2
+```
+
+To setup the test environments run the following.  Note that _cluster1_ appears twice as we
+are using it both as the Root CA cluster and as one of the demo clusters.
+
+```
+source ./demo_context.sh cluster1 cluster1 cluster2
 ```
 
 # Configuring Istio to use a common Citadel 

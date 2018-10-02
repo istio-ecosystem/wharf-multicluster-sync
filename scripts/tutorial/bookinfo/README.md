@@ -37,7 +37,7 @@ kubectl --context $CLUSTER2 apply -f reviews-exposure.yaml
 The policy we are applying looks like
 
 ```
-# Expose the "reviews" service
+## Expose the "reviews" service
 apiVersion: multicluster.istio.io/v1alpha1
 kind: ServiceExpositionPolicy
 metadata:
@@ -59,7 +59,7 @@ kubectl --context $CLUSTER2 get gateways,virtualservices,destinationrules
 
 You should see them.
 
-# Inspect the binding on cluster1
+## Inspect the binding on cluster1
 
 Exposing on cluster2 caused a _RemoteServiceBinding_ to be created on cluster1.
 
@@ -73,10 +73,26 @@ Because the agent is running in `live` mode the client-side Istio configuration 
 kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 ```
 
-# Verify that the reviews is present in the UI
+## Verify that the reviews is present in the UI
 
 Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews are present.
 
-# Exposing Ratings and deploying reviews-v2
+## Deploying and Exposing the Ratings microservice
 
-TODO
+We will now deploy a _ratings_ service on cluster1 and expose it.
+
+```
+kubectl --context $CLUSTER1 apply -f bookinfo-ratings.yaml
+kubectl --context $CLUSTER1 apply -f ratings-exposure.yaml
+```
+
+TODO Only expose ratings to cluster2
+
+As before, exposing ratings created configuration on peer cluster2:
+
+```
+kubectl --context $CLUSTER2 get remoteservicebindings,gateways,virtualservices,destinationrules
+```
+
+## Deploying a new version of reviews that will consume ratings
+
