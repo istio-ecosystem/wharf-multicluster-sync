@@ -64,7 +64,7 @@ rules:
   verbs: ["list", "watch"]
 - apiGroups: [""]
   resources: ["services"]
-  verbs: ["list", "watch"]
+  verbs: ["list", "watch", "create", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -123,6 +123,9 @@ spec:
         - name: mcagent
           image: "docker.io/ymesika/mcagent:0.1.0"
           imagePullPolicy: Always
+          env:
+          - name: MC_STYLE
+            value: "DIRECT_INGRESS"
           ports:
           - containerPort: 8999
           args:

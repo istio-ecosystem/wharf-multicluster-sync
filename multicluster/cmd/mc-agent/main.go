@@ -144,6 +144,12 @@ func main() {
 		log.Debugf("Config store now has %d RemoteServiceBinding entries", len(mcStore.RemoteServiceBindings()))
 	})
 
+	if os.Getenv(mcmodel.IstioConversionStyleKey) == mcmodel.DirectIngressStyle {
+		log.Info("Using Direct Ingress Style")
+	} else {
+		log.Info("Using Egress/Ingress Style")
+	}
+
 	// Set up a store wrapper for the Multi-Cluster controller
 	mcStore = mcmodel.MakeMCStore(ctl)
 

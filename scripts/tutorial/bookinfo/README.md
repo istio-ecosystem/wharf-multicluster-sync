@@ -67,13 +67,15 @@ Exposing on cluster2 caused a _RemoteServiceBinding_ to be created on cluster1.
 kubectl --context $CLUSTER1 get remoteservicebindings
 ```
 
-Because the agent is running in `live` mode the client-side Istio configuration was created automatically.
+If the binding is in `live` mode the client-side Istio configuration will be created automatically.
 
 ```
 kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 ```
 
 ## Verify that the reviews is present in the UI
+
+![alt text](/raw/master/scripts/tutorial/bookinfo/ui-connected.png "Connected UI")
 
 Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews are present.
 
