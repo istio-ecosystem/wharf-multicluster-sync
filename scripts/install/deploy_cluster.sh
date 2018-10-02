@@ -1,6 +1,8 @@
 #!/bin/bash
 set -o errexit
 
+AGENT_NS=default
+
 if [ -z "$2" ]
   then
     echo "Syntax: deploy_cluster.sh client-cluster peer-cluster [peer-cluster]*"
@@ -15,6 +17,14 @@ if [ -z "$3" ]
     exit 1
 fi
 
+if [ -z "$CONNECTION_MODE" ]
+  then
+	CONNECTION_MODE=live
+    echo "Remote Service Bindings will be created as $CONNECTION_MODE"
+  else
+    echo "Using CONNECTION_MODE=$CONNECTION_MODE"
+fi
+
 CLIENT_CLUSTER=$1
 CLIENT_IP=`kubectl --context ${CLIENT_CLUSTER} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 shift
@@ -23,6 +33,8 @@ shift
 for SERVER_CLUSTER in "$@"
 do
 	SERVER_IP=`kubectl --context ${SERVER_CLUSTER} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+	SERVER_AGENT_IP=`kubectl --context ${SERVER_CLUSTER} get service mc-agent -n $AGENT_NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+	SERVER_AGENT_PORT=`kubectl --context ${SERVER_CLUSTER} get service mc-agent -n $AGENT_NS -o jsonpath='{.spec.ports[0].nodePort}'`
 	echo $CLIENT_CLUSTER is a client of $SERVER_CLUSTER with Ingress Gateway at $SERVER_IP
 done
 
@@ -47,9 +59,9 @@ data:
       - ID: $SERVER_CLUSTER
         GatewayIP: $SERVER_IP
         GatewayPort: 80
-        AgentIP: 1.2.3.4
-        AgentPort: 80 
-        ConnectionMode: live
+        AgentIP: $SERVER_AGENT_IP
+        AgentPort: $SERVER_AGENT_PORT
+        ConnectionMode: $CONNECTION_MODE
 EOF
 set -e
 	
