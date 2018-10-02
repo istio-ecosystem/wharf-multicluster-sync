@@ -25,12 +25,24 @@ The _install_citadel.sh_ script will configure $CLUSTER1 and $CLUSTER2 to use Ci
 ./install_citadel.sh
 ```
 
-# Run the demo agents on the Istio control planes
+# Run the Multi-Cluster agents on demo clusters
 
-First, we configure the agents.  Next, deploy them.  For this demo we will make $CLUSTER1
-a client of $CLUSTER2.
+In this demo we have Cluster 1 watching exposed services on Cluster 2.
+For this purpose we need to deploy the MC agent on both clusters and configure Cluster 1's agent
+to peer with Cluster 2's agent.
+
+We first deploy the agent to `$CLUSTER2` which doesn't watch any other clusters (donor only):
+
+```
+./deploy_cluster.sh $CLUSTER2
+```
+> We need to configure cluster 2 first because the assigned LoadBalancer IP address to the agent service needs to be used for configuring the agent on cluster 1.
+
+We then configure and deploy the agent on `$CLUSTER1` and ask it to peer with `$CLUSTER2` (the 2nd argument):
 
 ```
 ./deploy_cluster.sh $CLUSTER1 $CLUSTER2
 ```
+
+The script will get the relevant information (Istio Gateway and MC Agent IP addresses) from Cluster 1 and use it in the peer configuration.
 
