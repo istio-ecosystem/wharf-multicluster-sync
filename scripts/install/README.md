@@ -11,18 +11,10 @@ If you are using $KUBECONFIG you can export multiple config files for this behav
 export KUBECONFIG=$KUBECONFIG1:$KUBECONFIG2:$KUBECONFIG3
 ```
 
-For this demo we will give our Kubernetes contexts names matching the their role for the demo.
+To setup the test environments run the following.  Use your Kubernetes cluster names as the contexts.  (_context-ca_ may match one of the other contexts.)
 
 ```
-kubectl config rename-context <ctx1> cluster1
-kubectl config rename-context <ctx2> cluster2
-```
-
-To setup the test environments run the following.  Note that _cluster1_ appears twice as we
-are using it both as the Root CA cluster and as one of the demo clusters.
-
-```
-source ./demo_context.sh cluster1 cluster1 cluster2
+source ./demo_context.sh <context-ca> <context1> <context2>
 ```
 
 # Configuring Istio to use a common Citadel 
@@ -44,15 +36,15 @@ to peer with Cluster 2's agent.
 We first deploy the agent to `$CLUSTER2` which doesn't watch any other clusters (donor only):
 
 ```
-./deploy_cluster.sh $CLUSTER2
+./deploy_cluster.sh cluster2=$CLUSTER2
 ```
 > We need to configure cluster 2 first because the assigned LoadBalancer IP address to the agent service needs to be used for configuring the agent on cluster 1.
 
 We then configure and deploy the agent on `$CLUSTER1` and ask it to peer with `$CLUSTER2` (the 2nd argument).  We also reconfigure the agent on cluster2 now that cluster1 is configured.
 
 ```
-./deploy_cluster.sh $CLUSTER1 $CLUSTER2
-./deploy_cluster.sh $CLUSTER2 $CLUSTER1
+./deploy_cluster.sh cluster1=$CLUSTER1 cluster2=$CLUSTER2
+./deploy_cluster.sh cluster2=$CLUSTER2 cluster1=$CLUSTER1
 ```
 
 The script will get the relevant information (Istio Gateway and MC Agent IP addresses) from Cluster 1 and use it in the peer configuration.

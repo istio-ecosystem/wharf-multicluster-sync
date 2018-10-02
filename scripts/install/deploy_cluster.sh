@@ -17,7 +17,15 @@ if [ -z "$CONNECTION_MODE" ]
 fi
 
 CLIENT_CLUSTER=$1
-CLIENT_IP=`kubectl --context ${CLIENT_CLUSTER} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+CLIENT_ID=$(echo $CLIENT_CLUSTER | cut -f1 -d=)
+CLIENT_NAME=$(echo $CLIENT_CLUSTER | cut -f2 -d=)
+if [ -z "$CLIENT_NAME" ]; then
+	CLIENT_NAME=$CLIENT_CLUSTER
+else
+	echo $CLIENT_NAME will have role $CLIENT_ID
+fi
+
+CLIENT_IP=`kubectl --context ${CLIENT_NAME} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 shift
 
 if [ "$#" -eq 0 ]; 
@@ -27,14 +35,22 @@ else
 # TODO Create SERVER_IP as list so we can create ConfigMap with list of peers
 for SERVER_CLUSTER in "$@"
 do
-	SERVER_IP=`kubectl --context ${SERVER_CLUSTER} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
-	SERVER_AGENT_IP=`kubectl --context ${SERVER_CLUSTER} get service mc-agent -n $AGENT_NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
-	echo $CLIENT_CLUSTER is a client of $SERVER_CLUSTER with Ingress Gateway at $SERVER_IP
+	SERVER_ID=$(echo $SERVER_CLUSTER | cut -f1 -d=)
+	SERVER_NAME=$(echo $SERVER_CLUSTER | cut -f2 -d=)
+	if [ -z "$SERVER_NAME" ]; then
+		SERVER_NAME=$SERVER_CLUSTER
+	else
+		echo $SERVER_NAME will have role $SERVER_ID
+	fi
+
+	SERVER_IP=`kubectl --context ${SERVER_NAME} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+	SERVER_AGENT_IP=`kubectl --context ${SERVER_NAME} get service mc-agent -n $AGENT_NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+	echo $CLIENT_NAME \($CLIENT_ID\) is a client of $SERVER_NAME \($SERVER_ID\) with Ingress Gateway at $SERVER_IP
 done
 
   PEERS=$(cat <<-END
 WatchedPeers:
-      - ID: $SERVER_CLUSTER
+      - ID: $SERVER_ID
         GatewayIP: $SERVER_IP
         GatewayPort: 80
         AgentIP: $SERVER_AGENT_IP
@@ -46,7 +62,7 @@ fi
 
 # Create ConfigMap to configure agent
 set +e
-cat <<EOF | kubectl --context $CLIENT_CLUSTER apply -f -
+cat <<EOF | kubectl --context $CLIENT_NAME apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -56,7 +72,7 @@ metadata:
     istio: multi-cluster-agent
 data:
   config.yaml: |
-      ID: $CLIENT_CLUSTER
+      ID: $CLIENT_NAME
       GatewayIP: $CLIENT_IP
       GatewayPort: 80
       AgentPort: 8999
@@ -67,4 +83,4 @@ EOF
 set -e
 	
 # Deploy the MC agent service
-kubectl --context $CLIENT_CLUSTER apply -f deploy.yaml
+kubectl --context $CLIENT_NAME apply -f deploy.yaml
