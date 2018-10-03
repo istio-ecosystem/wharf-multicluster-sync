@@ -162,7 +162,6 @@ To remove the demo artifacts, execute the following:
 ```
 kubectl --context $CLUSTER2 delete -f reviews-exposure.yaml
 kubectl --context $CLUSTER3 delete -f ratings-exposure.yaml
-kubectl --context $CLUSTER3 delete -f ratings-exposure.yaml
 kubectl --context $CLUSTER1 delete -f bookinfo-norating-noreviews.yaml
 kubectl --context $CLUSTER1 delete -f bookinfo-gateway.yaml
 kubectl --context $CLUSTER2 delete -f bookinfo-reviews-v1.yaml
