@@ -10,6 +10,15 @@ and consume services.  A cluster may be a "donor" or "acceptor" or both.  A clus
 offer services that are used by multiple clusters and a service may consume the same service from multiple
 clusters.
 
+## Demo
+
+You'll need two clusters with public IP addresses.
+
+Follow [these instructions](docs/install/README.md) to set up your clusters to share a Root CA
+and install experimental Multicluster Agents.
+
+Then try the [Multicluster bookinfo tutorial](docs/tutorial/bookinfo/README.md).
+
 ## User Experience
 
 This design assumes services are exposed and consumed by separate clusters, possibly managed by independent parties. The goal is to allow one cluster to consume services explicitly exposed by the other, maintaining clear service boundaries, encapsulation and authority of control. We follow a similar design flow to the way Kubernetes handles Persistent Volume (PV) and Persistent Volume Claims (PVC).

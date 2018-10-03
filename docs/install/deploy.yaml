@@ -1,0 +1,141 @@
+# Add the Multi-Cluster CRDs
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceexpositionpolicies.multicluster.istio.io  
+spec:
+  group: multicluster.istio.io
+  names:
+    kind: ServiceExpositionPolicy
+    listKind: ServiceExpositionPolicyList
+    plural: serviceexpositionpolicies
+    singular: serviceexpositionpolicy
+  scope: Namespaced
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: remoteservicebindings.multicluster.istio.io
+spec:
+  group: multicluster.istio.io
+  names:
+    kind: RemoteServiceBinding
+    listKind: RemoteServiceBindingList
+    plural: remoteservicebindings
+    singular: remoteservicebinding
+  scope: Namespaced
+  version: v1alpha1
+---
+
+# Set up the necessary cluster roles for the agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: multi-cluster-agent-service-account
+  namespace: default
+  labels:
+    istio: multi-cluster-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: multi-cluster-agent
+  namespace: default
+  labels:
+    istio: multi-cluster-agent
+rules:
+- apiGroups: ["multicluster.istio.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["rbac.istio.io"]
+  resources: ["*"]
+  verbs: ["list", "watch"]
+- apiGroups: ["config.istio.io"]
+  resources: ["*"]
+  verbs: ["list", "watch"]
+- apiGroups: ["networking.istio.io"]
+  resources: ["*"]
+  verbs: ["list", "watch", "create", "delete"]
+- apiGroups: ["authentication.istio.io"]
+  resources: ["*"]
+  verbs: ["list", "watch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["list", "watch", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: multi-cluster-agent-role-binding
+  labels:
+    istio: multi-cluster-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name:  multi-cluster-agent
+subjects:
+  - kind: ServiceAccount
+    name:  multi-cluster-agent-service-account
+    namespace: default
+---
+
+# Add the Multi-Cluster service
+# Currently it is a LB type and will get a public IP in addition to the public
+# IP of the Istio gateway.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-agent
+  namespace: default
+  labels:
+    istio: multi-cluster-agent
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    name: http
+    targetPort: 8999
+  selector:
+    istio: multi-cluster-agent
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mc-agent
+  namespace: default
+  labels:
+    istio: multi-cluster-agent
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        istio: multi-cluster-agent
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: multi-cluster-agent-service-account
+      containers:
+        - name: mcagent
+          image: "docker.io/ymesika/mcagent:0.1.0"
+          imagePullPolicy: Always
+          env:
+          - name: MC_STYLE
+            value: "DIRECT_INGRESS"
+          ports:
+          - containerPort: 8999
+          args:
+          - --configYaml
+          - /etc/config/config.yaml
+          volumeMounts:
+          - name: config
+            mountPath: /etc/config
+            readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: mc-configuration
