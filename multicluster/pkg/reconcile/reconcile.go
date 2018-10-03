@@ -15,7 +15,7 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	kube_v1 "k8s.io/api/core/v1"
 )

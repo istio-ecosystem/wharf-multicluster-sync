@@ -20,8 +20,8 @@ import (
 	"istio.io/istio/pilot/pkg/config/memory"
 	istiomodel "istio.io/istio/pilot/pkg/model"
 
-	multiclustercrd "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	multiclustercrd "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/config/kube/crd"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	kube_v1 "k8s.io/api/core/v1"
 )

@@ -15,9 +15,9 @@ import (
 
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
-	mccrd "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/agent"
+	mccrd "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/config/kube/crd"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
@@ -25,7 +25,7 @@ import (
 
 	// Importing the API messages so that when resource events are fired the
 	// resource will be parsed into a message object
-	_ "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
+	_ "github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
 )
 
 const (

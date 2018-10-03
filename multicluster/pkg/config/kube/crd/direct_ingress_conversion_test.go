@@ -21,8 +21,8 @@ import (
 
 	"istio.io/istio/pilot/test/util"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/agent"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	kube_v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"

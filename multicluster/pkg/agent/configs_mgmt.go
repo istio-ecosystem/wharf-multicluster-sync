@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/reconcile"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/reconcile"
 
 	"istio.io/istio/pilot/pkg/model"
 	kubecfg "istio.io/istio/pkg/kube"

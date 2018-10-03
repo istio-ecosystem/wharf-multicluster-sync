@@ -11,7 +11,7 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 	"istio.io/istio/pilot/pkg/model"
 )
 

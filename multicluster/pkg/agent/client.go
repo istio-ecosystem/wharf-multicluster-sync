@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 )

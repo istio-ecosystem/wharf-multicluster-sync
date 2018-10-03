@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
 
 	"istio.io/api/networking/v1alpha3"
 	istiomodel "istio.io/istio/pilot/pkg/model"

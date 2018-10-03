@@ -8,7 +8,7 @@ import (
 
 	istiomodel "istio.io/istio/pilot/pkg/model"
 
-	multicluster "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
+	multicluster "github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
 )
 
 // ValidateServiceExpositionPolicy checks service exposition policy specifications

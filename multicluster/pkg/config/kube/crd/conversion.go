@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"strings"
 
-	multiclustermodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	multiclustermodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"

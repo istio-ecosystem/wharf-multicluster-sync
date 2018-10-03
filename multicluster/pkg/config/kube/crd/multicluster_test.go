@@ -21,8 +21,8 @@ import (
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/agent"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/agent"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	multierror "github.com/hashicorp/go-multierror"
 

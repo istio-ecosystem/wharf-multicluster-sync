@@ -20,8 +20,8 @@ import (
 	
 	"github.com/luci/go-render/render"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/config/kube/crd"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
 	"istio.io/istio/pilot/pkg/config/memory"
@@ -30,7 +30,7 @@ import (
 
 	// Importing the API messages so that when resource events are fired the
 	// resource will be parsed into a message object
-	_ "github.ibm.com/istio-research/multicluster-roadmap/api/multicluster/v1alpha1"
+	_ "github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
 )
 
 // staticClusterInfo simulates the function of K8s Cluster Registry

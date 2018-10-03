@@ -25,8 +25,8 @@ import (
 
 	"istio.io/istio/pilot/test/util"
 
-	"github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/config/kube/crd"
-	mcmodel "github.ibm.com/istio-research/multicluster-roadmap/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/config/kube/crd"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 )
 
 // TestServiceToBinding tests agent.exposedServicesToBinding()
