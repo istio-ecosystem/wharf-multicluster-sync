@@ -14,5 +14,8 @@ multicluster/build/docker/mcagent
 # Logs we generate
 scripts/clusters/*.log
 
+# Documentation we generate
+api/**/*.html
+
 # Emacs temp files
 *~
