@@ -1,8 +1,0 @@
-kind: Service
-apiVersion: v1
-metadata:
-  name: server
-spec:
-  ports:
-  - protocol: TCP
-    port: 80

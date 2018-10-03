@@ -11,7 +11,7 @@ fi
  
 export CLUSTER1_NAME=$2
 export CLUSTER2_NAME=$3
-export CLUSTER2_NAME=$4
+export CLUSTER3_NAME=$4
 export CLUSTER1=$2
 export CLUSTER2=$3
 export CLUSTER3=$4

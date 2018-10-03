@@ -1,14 +1,6 @@
 #!/bin/bash
 set -e
 
-source ./kube_context.sh
-
-# To make sure we can ccess all clusters
-kubectl --context ${CLUSTER0} get nodes
-kubectl --context ${CLUSTER1} get nodes
-kubectl --context ${CLUSTER2} get nodes
-kubectl --context ${CLUSTER3} get nodes
-
 # Install the ROOT CA
 kubectl --context ${ROOTCA} apply -f istio-citadel-standalone.yaml
 rootca_host=`kubectl --context ${ROOTCA} get service standalone-citadel -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
