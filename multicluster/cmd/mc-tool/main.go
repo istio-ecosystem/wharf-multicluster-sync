@@ -50,7 +50,7 @@ func main() {
 	flag.Parse()
 
 	if filename == "" {
-		fmt.Printf("usage: mc-cli --filename <filename>\n")
+		fmt.Printf("usage: mc-cli --filename <filename> --cluster Cluster=host:port[,Cluster2=host:port]\n")
 		os.Exit(2)
 	}
 

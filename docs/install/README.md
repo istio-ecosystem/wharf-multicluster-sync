@@ -62,5 +62,8 @@ To cleanup the multicluster agents,
 ```
 kubectl --context $CLUSTER1 delete -f deploy.yaml 
 kubectl --context $CLUSTER2 delete -f deploy.yaml 
-kubectl --context $CLUSTER3 delete -f deploy.yaml 
+kubectl --context $CLUSTER3 delete -f deploy.yaml
+kubectl --context $CLUSTER1 delete cm mc-configuration 
+kubectl --context $CLUSTER2 delete cm mc-configuration 
+kubectl --context $CLUSTER3 delete cm mc-configuration 
 ```

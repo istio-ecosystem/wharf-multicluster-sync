@@ -84,7 +84,7 @@ Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews ar
 
 ## Deploying and Exposing the Ratings microservice
 
-We will now deploy a _ratings_ service on cluster1 and expose it.
+We will now deploy a _ratings_ service on cluster3 and expose it.
 
 ### Optional: Manually accept configuration
 
@@ -161,7 +161,9 @@ To remove the demo artifacts, execute the following:
 
 ```
 kubectl --context $CLUSTER2 delete -f reviews-exposure.yaml
+kubectl --context $CLUSTER1 delete service reviews
 kubectl --context $CLUSTER3 delete -f ratings-exposure.yaml
+kubectl --context $CLUSTER2 delete service ratings
 kubectl --context $CLUSTER1 delete -f bookinfo-norating-noreviews.yaml
 kubectl --context $CLUSTER1 delete -f bookinfo-gateway.yaml
 kubectl --context $CLUSTER2 delete -f bookinfo-reviews-v1.yaml
