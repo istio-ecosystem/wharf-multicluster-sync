@@ -178,7 +178,15 @@ func (c *Client) createRemoteServiceBinding(exposed *ExposedServices, connection
 // Function will call the peer of this client and fetch the current state of
 // exposed services.
 func (c *Client) callPeer() (*ExposedServices, error) {
-	url := fmt.Sprintf("http://%s:%d/exposed/%s", c.peer.AgentIP, c.peer.AgentPort, c.config.ID)
+	agentIP := c.peer.AgentIP
+	if agentIP == "" {
+		agentIP = c.peer.GatewayIP
+	}
+	agentPort := c.peer.AgentPort
+	if agentPort == 0 {
+		agentPort = c.peer.GatewayPort
+	}
+	url := fmt.Sprintf("http://%s:%d/exposed/%s", agentIP, agentPort, c.config.ID)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
