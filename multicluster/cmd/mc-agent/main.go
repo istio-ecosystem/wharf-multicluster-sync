@@ -7,10 +7,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/howeyc/fsnotify"
 	"gopkg.in/yaml.v2"
 
 	"istio.io/istio/pilot/pkg/config/kube/crd"
@@ -183,6 +184,7 @@ func main() {
 
 	close(stopCh)
 	server.Close()
+	configWatcher.Close()
 
 	_ = log.Sync()
 }
@@ -270,27 +272,25 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 	}
 
 	go func() {
+		var timerC <-chan time.Time
 		for {
 			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
+			case <-timerC:
+				timerC = nil
+				onFileModified()
+			case event := <-watcher.Event:
+				// use a timer to debounce configuration updates
+				if (event.IsModify() || event.IsCreate()) && timerC == nil {
+					timerC = time.After(100 * time.Millisecond)
 				}
-				// If we see a Remove event, we know the config was updated
-				if event.Op == fsnotify.Remove {
-					// Since the symlink was removed, we must re-register the
-					// file to be watched
-					watcher.Remove(event.Name)
-					watcher.Add(event.Name)
-					onFileModified()
-				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					onFileModified()
-				}
+			case err := <-watcher.Error:
+				log.Errorf("Watcher error: %v", err)
 			}
 		}
 	}()
-	err = watcher.Add(file)
+
+	fileDir, _ := filepath.Split(file)
+	err = watcher.Watch(fileDir)
 	if err != nil {
 		log.Errora(err)
 		return nil

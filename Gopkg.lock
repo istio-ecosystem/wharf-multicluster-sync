@@ -26,14 +26,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
-  name = "github.com/fsnotify/fsnotify"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
-  version = "v1.4.7"
-
-[[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
   name = "github.com/ghodss/yaml"
   packages = ["."]
@@ -150,6 +142,14 @@
   ]
   pruneopts = "UT"
   revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
+
+[[projects]]
+  digest = "1:7159b4af2aae0c37b088cea9cb5932b8801a289616c5b789e4669558521cff0c"
+  name = "github.com/howeyc/fsnotify"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "441bbc86b167f3c1f4786afae9931403b99fdacf"
+  version = "v0.9.0"
 
 [[projects]]
   branch = "master"
@@ -679,12 +679,12 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/fsnotify/fsnotify",
     "github.com/ghodss/yaml",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/proto",
     "github.com/gorilla/mux",
     "github.com/hashicorp/go-multierror",
+    "github.com/howeyc/fsnotify",
     "github.com/luci/go-render/render",
     "gopkg.in/yaml.v2",
     "istio.io/api/networking/v1alpha3",
