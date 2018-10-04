@@ -236,6 +236,39 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 		log.Errora(err)
 		return nil
 	}
+
+	onFileModified := func() {
+		//Config file modified
+		log.Debug("Config file modified. Reloading.")
+		newClusterConfig, lderr := loadConfig(file, isYaml)
+		if lderr != nil {
+			log.Error("Failed to reload the config file")
+			return
+		}
+
+		clusterConfig = newClusterConfig
+
+		handled := map[string]bool{}
+		for _, peer := range clusterConfig.WatchedPeers {
+			// Update client with updated configuration
+			if clientsCfgCh[peer.ID] != nil {
+				clientsCfgCh[peer.ID] <- *clusterConfig
+			} else {
+				//This is a new peer. Launch a new client for it
+				launchPeerClient(peer)
+			}
+			handled[peer.ID] = true
+		}
+
+		//Find clients which are no longer needed and close them
+		for id, cfgCh := range clientsCfgCh {
+			if !handled[id] {
+				clientsCfgCh[id] = nil
+				close(cfgCh)
+			}
+		}
+	}
+
 	go func() {
 		for {
 			select {
@@ -243,36 +276,16 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 				if !ok {
 					return
 				}
+				// If we see a Remove event, we know the config was updated
+				if event.Op == fsnotify.Remove {
+					// Since the symlink was removed, we must re-register the
+					// file to be watched
+					watcher.Remove(event.Name)
+					watcher.Add(event.Name)
+					onFileModified()
+				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					//Config file modified
-					log.Debug("Config file modified. Reloading.")
-					newClusterConfig, lderr := loadConfig(file, isYaml)
-					if lderr != nil {
-						log.Error("Failed to reload the config file")
-						continue
-					}
-
-					clusterConfig = newClusterConfig
-
-					handled := map[string]bool{}
-					for _, peer := range clusterConfig.WatchedPeers {
-						// Update client with updated configuration
-						if clientsCfgCh[peer.ID] != nil {
-							clientsCfgCh[peer.ID] <- *clusterConfig
-						} else {
-							//This is a new peer. Launch a new client for it
-							launchPeerClient(peer)
-						}
-						handled[peer.ID] = true
-					}
-
-					//Find clients which are no longer needed and close them
-					for id, cfgCh := range clientsCfgCh {
-						if !handled[id] {
-							clientsCfgCh[id] = nil
-							close(cfgCh)
-						}
-					}
+					onFileModified()
 				}
 			}
 		}
