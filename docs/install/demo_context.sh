@@ -16,6 +16,7 @@ export CLUSTER1=$2
 export CLUSTER2=$3
 export CLUSTER3=$4
 export ROOTCA_NAME=$1
+export ROOTCA=$1
 
 echo Checking access to ROOTCA cluster with context $ROOTCA_NAME
 if ! kubectl --context $ROOTCA_NAME version --short=true ; then

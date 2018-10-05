@@ -1,8 +1,16 @@
-// Licensed Materials - Property of IBM
 // (C) Copyright IBM Corp. 2018. All Rights Reserved.
-// US Government Users Restricted Rights - Use, duplication or
-// disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-// Copyright 2018 IBM Corporation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package main
 
@@ -11,47 +19,69 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/ghodss/yaml"
-	
+	multierror "github.com/hashicorp/go-multierror"
+
 	"github.com/luci/go-render/render"
 
-	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/config/kube/crd"
-	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/agent"
+	mccrd "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/config/kube/crd"
+	mcmodel "github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/model"
 
 	istiocrd "istio.io/istio/pilot/pkg/config/kube/crd"
 	"istio.io/istio/pilot/pkg/config/memory"
 	istiomodel "istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
 
+	kube_v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+
 	// Importing the API messages so that when resource events are fired the
 	// resource will be parsed into a message object
 	_ "github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
+	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-// staticClusterInfo simulates the function of K8s Cluster Registry
-// https://github.com/kubernetes/cluster-registry in unit tests.
-type staticClusterInfo struct {
-	ips   map[string]string
-	ports map[string]uint32
-}
-
 var (
-	filename string // input filename
+	// filename is the input YAML containing ServiceExpositionPolicy and/or RemoteServiceBinding
+	filename string
+
+	// cmFilename is the input YAML containing a ConfigMap naming clusters
+	cmFilename string
+
+	// baselineFilename is the input YAML containing starter Istio configuration
+	baselineFilename string
+
+	// clusters is deprecated; use cmFilename instead
 	clusters string
+
+	// gengo allows the tool to generate Go code (used for writing Go tests)
 	gengo bool
+
+	// mcStyle defines the output as DIRECT_INGRESS or EGRESS_INGRESS
+	mcStyle string
 )
 
 func main() {
 	flag.Parse()
+	tool()
+}
 
-	if filename == "" {
-		fmt.Printf("usage: mc-cli --filename <filename> --cluster Cluster=host:port[,Cluster2=host:port]\n")
-		os.Exit(2)
+func tool() {
+	if mcStyle == "" {
+		// If the user did not specify --mc-style, and there is no MC_STYLE var, default to direct ingress style
+		if os.Getenv(mcmodel.IstioConversionStyleKey) == "" {
+			os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.DirectIngressStyle)  // nolint: errcheck
+		}
+	} else {
+		os.Setenv(mcmodel.IstioConversionStyleKey, mcStyle)  // nolint: errcheck
+	}
+
+	if filename == "" || cmFilename == "" {
+		fmt.Printf("usage: mc-tool --filename <filename> --mc-conf-filename <configmap-filename>\n")
+		os.Exit(1)
 	}
 
 	in, err := os.Open(filename)
@@ -61,12 +91,32 @@ func main() {
 	}
 	defer in.Close() // nolint: errcheck
 
-	if gengo {
-		err = convertToGo(in, os.Stdout)
-	} else {
-		err = readAndConvert(in, os.Stdout)
+	ci, err := parseMCConfig(cmFilename)
+	if err != nil {
+		fmt.Printf("could not read configuration %q: %v\n", cmFilename, err)
+		os.Exit(2)
 	}
-	
+
+	var store istiomodel.ConfigStore
+	if baselineFilename != "" {
+		store, err = createConfigStoreFromFile(baselineFilename)
+		if err != nil {
+			fmt.Printf("could not initialize Istio configuration from %q: %v\n", baselineFilename, err)
+			os.Exit(2)
+		}
+	} else {
+		store, _ = createConfigStore([]istiomodel.Config{})
+	}
+
+	// TODO load K8s services from file and merge them with generated services
+	svcStore := []kube_v1.Service{}
+
+	if gengo {
+		err = convertToGo(ci, store, svcStore, in, os.Stdout)
+	} else {
+		err = readAndConvert(ci, store, svcStore, in, os.Stdout)
+	}
+
 	if err != nil {
 		fmt.Printf("Error %v\n", err)
 		os.Exit(3)
@@ -75,25 +125,21 @@ func main() {
 
 func init() {
 	flag.StringVar(&filename, "filename", "", "Path to YAML file containing Service Exposition Policies and Remote Service Bindings.")
-	flag.StringVar(&clusters, "cluster", "", "e.g. cluster=host:port[,cluster2=host2:port2]")
-	flag.BoolVar(&gengo, "gengo", false, "Generate Go code instead of YAML]")
+	flag.StringVar(&cmFilename, "mc-conf-filename", "", "Path to YAML file containing Multicluster ConfigMap")
+	flag.StringVar(&baselineFilename, "initial-conf-filename", "", "Path to YAML file containing baseline Istio configuration")
+	flag.StringVar(&clusters, "cluster", "", "DEPRECATED; e.g. cluster=host:port[,cluster2=host2:port2]")
+	flag.StringVar(&mcStyle, "mc-style", "", "Generation style: DIRECT_INGRESS|EGRESS_INGRESS")
+	flag.BoolVar(&gengo, "gengo", false, "Generate Go code instead of YAML (for generating Go tests)")
 }
 
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvert(reader io.Reader, writer io.Writer) error {
+func readAndConvert(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service, reader io.Reader, writer io.Writer) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
 	}
 
-	ci, err := parseClusterOption(clusters)
-	if err != nil {
-		return err
-	}
- 
-	store, _ := createTestConfigStore([]istiomodel.Config{})
- 
-	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci, store)
+	istioConfig, k8sSvcs, err := mcmodel.ConvertBindingsAndExposures2(configs, ci, store, svcs)
 	if err != nil {
 		return err
 	}
@@ -105,25 +151,20 @@ func readAndConvert(reader io.Reader, writer io.Writer) error {
 		istiomodel.ServiceEntry,
 	}
 	err = writeIstioYAMLOutput(configDescriptor, istioConfig, writer)
+	// TODO also write k8sSvcs, if any
+	_ = k8sSvcs
 	return err
 }
 
 // convertToGo converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to
 // Istio config Go source code fragment.
-func convertToGo(reader io.Reader, writer io.Writer) error {
+func convertToGo(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service, reader io.Reader, writer io.Writer) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
 	}
 
-	ci, err := parseClusterOption(clusters)
-	if err != nil {
-		return err
-	}
-
-	store, _ := createTestConfigStore([]istiomodel.Config{})
-
-	istioConfig, err := model.ConvertBindingsAndExposures(configs, ci, store)
+	istioConfig, k8sSvcs, err := mcmodel.ConvertBindingsAndExposures2(configs, ci, store, svcs)
 	if err != nil {
 		return err
 	}
@@ -134,38 +175,65 @@ func convertToGo(reader io.Reader, writer io.Writer) error {
 			return err
 		}
 	}
-	
+
+	// TODO also write k8sSvcs, if any
+	_ = k8sSvcs
+
 	return nil
 }
 
-// parseClusterOption takes a string of the form cluster=host:port[,cluster2=host2:port2]
-// and creates a staticClusterInfo
-func parseClusterOption(clusters string) (model.ClusterInfo, error) {
-	if clusters == "" {
-		return nil, fmt.Errorf("option --cluster Cluster=host:port[,Cluster2=host:port] mandatory")
+// parseMCConfig parses the kind of ConfigMap that the agents are configured with, mapping
+// cluster name to host/port
+func parseMCConfig(filename string) (mcmodel.ClusterInfo, error) {
+
+	inConfig, err := os.Open(cmFilename)
+	if err != nil {
+		fmt.Printf("could not open %q: %v\n", cmFilename, err)
+		os.Exit(2)
 	}
 
-	out := staticClusterInfo{
-		ips:   make(map[string]string),
-		ports: make(map[string]uint32),
+	outConfigs := make([]kube_v1.ConfigMap, 0)
+
+	data, err := ioutil.ReadAll(inConfig)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, clusterExpr := range strings.Split(clusters, ",") {
-		parts := strings.SplitN(clusterExpr, "=", 2)
-		cluster, hostport := parts[0], parts[1]
-		shost, sport, err := net.SplitHostPort(hostport)
-		if err != nil {
-			return nil, err
-		}
-		out.ips[cluster] = shost
-		u, err := strconv.ParseUint(sport, 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		out.ports[cluster] = uint32(u)
+	codecs := serializer.NewCodecFactory(clientsetscheme.Scheme)
+	deserializer := codecs.UniversalDeserializer()
+	obj, _, err := deserializer.Decode(data, nil, nil)
+	if err != nil {
+		return nil, err
 	}
 
-	return &out, nil
+	inConfig.Close() // nolint: errcheck
+
+	// now use switch over the type of the object
+	// and match each type-case
+	switch o := obj.(type) {
+	case *kube_v1.ConfigMap:
+		outConfigs = append(outConfigs, *o)
+	default:
+		fmt.Printf("Unexpected Kubernetes type %v\n", o)
+	}
+
+	return configMapToClusterInfo(outConfigs[0])
+}
+
+func configMapToClusterInfo(cm kube_v1.ConfigMap) (mcmodel.ClusterInfo, error) {
+	configYAML, ok := cm.Data["config.yaml"]
+	if !ok {
+		return nil, fmt.Errorf("ConfigMap does not include 'config.yaml' file") // nolint: golint
+	}
+
+	var err error
+	var config agent.ClusterConfig
+	err = yaml.Unmarshal([]byte(configYAML), &config)
+	// err = json.Unmarshal(byj, &config)
+	if err != nil {
+		return nil, multierror.Prefix(err, "Could not decode config.yaml to ConfigMap")
+	}
+	return config, nil
 }
 
 func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []istiomodel.Config, writer io.Writer) error {
@@ -201,7 +269,7 @@ func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
 		return nil, err
 	}
 
-	config, _, err := crd.ParseInputs(string(data))
+	config, _, err := mccrd.ParseInputs(string(data))
 	if err != nil {
 		return nil, err
 	}
@@ -209,23 +277,41 @@ func readConfigs(reader io.Reader) ([]istiomodel.Config, error) {
 	return config, nil
 }
 
-func (ci staticClusterInfo) IP(name string) string {
-	out, ok := ci.ips[name]
-	if ok {
-		return out
+func createConfigStoreFromFile(fname string) (istiomodel.ConfigStore, error) {
+	configs := []istiomodel.Config{}
+
+	if fname != "" {
+		reader, err := os.Open(fname)
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close() // nolint: errcheck
+
+		configs, err = readIstioConfigs(reader)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return "255.255.255.255" // dummy value for unknown clusters
+
+	return createConfigStore(configs)
 }
 
-func (ci staticClusterInfo) Port(name string) uint32 {
-	out, ok := ci.ports[name]
-	if ok {
-		return out
+func readIstioConfigs(reader io.Reader) ([]istiomodel.Config, error) {
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
 	}
-	return 8080 // dummy value for unknown clusters
+
+	config, _, err := istiocrd.ParseInputs(string(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
-func createTestConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore, error) {
+func createConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore, error) {
 	out := memory.Make(istiomodel.IstioConfigTypes)
 	for _, config := range configs {
 		_, err := out.Create(config)

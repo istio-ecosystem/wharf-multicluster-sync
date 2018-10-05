@@ -1,0 +1,19 @@
+# Example configuration for an Agent (or command-line)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-mc
+data:
+  config.yaml: |
+      ID: cluster1
+      GatewayIP: 1.2.3.4
+      GatewayPort: 81
+      AgentPort: 8999
+      TrustedPeers: []
+      Peers:
+      - ID: cluster2
+        GatewayIP: 169.62.129.93
+        GatewayPort: 80
+        AgentIP: "5.6.7.8"
+        AgentPort: 80 
+        ConnectionMode: live

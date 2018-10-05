@@ -1,0 +1,38 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: service-entry-reviews
+  namespace: default
+spec:
+  endpoints:
+  - address: 169.62.129.93
+    ports:
+      http: 80
+  hosts:
+  - reviews.default.svc.cluster.local
+  ports:
+  - name: http
+    number: 9080
+    protocol: HTTP
+  resolution: STATIC
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  annotations:
+    multicluster.istio.io/provenance: default.reviews
+  creationTimestamp: null
+  name: dest-rule-reviews
+  namespace: default
+spec:
+  host: reviews.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      caCertificates: /etc/certs/root-cert.pem
+      clientCertificate: /etc/certs/cert-chain.pem
+      mode: MUTUAL
+      privateKey: /etc/certs/key.pem
+      sni: reviews.default.svc.cluster.local
