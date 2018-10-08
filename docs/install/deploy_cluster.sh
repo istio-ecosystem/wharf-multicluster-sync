@@ -1,7 +1,8 @@
 #!/bin/bash
 set -o errexit
 
-AGENT_NS=default
+#AGENT_NS=default
+AGENT_NS=istio-system
 
 if ! [ -z "$3" ]; then
     echo "Unimplemented: Create config map for multiple services. Use one peer for now."
@@ -44,7 +45,8 @@ do
 	fi
 
 	SERVER_IP=`kubectl --context ${SERVER_NAME} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
-	SERVER_AGENT_IP=`kubectl --context ${SERVER_NAME} get service mc-agent -n $AGENT_NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+	# SERVER_AGENT_IP=`kubectl --context ${SERVER_NAME} get service mc-agent -n "$AGENT_NS" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+	SERVER_AGENT_IP=$SERVER_IP
 	echo $CLIENT_NAME \($CLIENT_ID\) is a client of $SERVER_NAME \($SERVER_ID\) with Ingress Gateway at $SERVER_IP
 done
 
@@ -67,7 +69,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mc-configuration
-  namespace: default
+  namespace: istio-system
   labels:
     istio: multi-cluster-agent
 data:

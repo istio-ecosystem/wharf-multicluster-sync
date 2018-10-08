@@ -207,7 +207,9 @@ func launchPeerClient(peer agent.ClusterConfig) {
 	client, err := agent.NewClient(clusterConfig, &peer, &mcStore, istioStore)
 	if err != nil {
 		log.Errorf("Failed to create an agent client to peer: %s", peer.ID)
+		return
 	}
+	log.Infof("Created agent client to peer: %s", peer.ID)
 	cfgCh := make(chan agent.ClusterConfig)
 	clientsCfgCh[peer.ID] = cfgCh
 	go client.Run(cfgCh, stopCh)

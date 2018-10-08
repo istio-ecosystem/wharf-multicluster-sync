@@ -194,7 +194,7 @@ func (c *Client) callPeer() (*ExposedServices, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("response status code is not OK")
+		return nil, fmt.Errorf("response status code is %d not OK", resp.StatusCode)
 	}
 
 	exposed := &ExposedServices{}

@@ -37,9 +37,7 @@ We then configure and deploy the agent on `$CLUSTER1` and ask it to peer with `$
 
 ```
 ./deploy_cluster.sh cluster3=$CLUSTER3
-sleep 10
 ./deploy_cluster.sh cluster2=$CLUSTER2 cluster3=$CLUSTER3
-sleep 10
 ./deploy_cluster.sh cluster1=$CLUSTER1 cluster2=$CLUSTER2
 ```
 
