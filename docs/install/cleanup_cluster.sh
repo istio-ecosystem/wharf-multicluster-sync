@@ -7,4 +7,4 @@ then
 fi
 
 kubectl delete --context=$1 -f deploy.yaml
-kubectl delete --context=$1 configmaps mc-configuration
+kubectl delete --context=$1 -n istio-system configmaps mc-configuration
