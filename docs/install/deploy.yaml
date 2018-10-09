@@ -120,7 +120,7 @@ spec:
       serviceAccountName: multi-cluster-agent-service-account
       containers:
         - name: mcagent
-          image: "docker.io/ymesika/mcagent:0.1.1"
+          image: "docker.io/ymesika/mcagent:0.1.2"
           imagePullPolicy: Always
           env:
           - name: MC_STYLE
