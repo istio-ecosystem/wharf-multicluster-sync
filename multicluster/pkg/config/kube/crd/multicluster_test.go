@@ -15,7 +15,6 @@
 package crd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -245,22 +244,4 @@ func writeK8sYAMLOutput(svcs []kube_v1.Service, writer io.Writer) error {
 	}
 
 	return nil
-}
-
-// loadConfig will load the cluster configuration from the provided JSON file
-func loadConfig(file string) (*agent.ClusterConfig, error) {
-	jsonFile, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer jsonFile.Close() // nolint: errcheck
-
-	var config agent.ClusterConfig
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	err = json.Unmarshal(bytes, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
 }

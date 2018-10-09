@@ -1,0 +1,7 @@
+ID: cluster-b
+GatewayIP: 127.0.0.1
+GatewayPort: 80
+AgentPort: 8999
+TrustedPeers:
+- cluster-a
+WatchedPeers: []

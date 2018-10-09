@@ -15,10 +15,8 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -26,7 +24,6 @@ import (
 	"time"
 
 	"github.com/howeyc/fsnotify"
-	"gopkg.in/yaml.v2"
 
 	"istio.io/istio/pilot/pkg/config/kube/crd"
 
@@ -51,8 +48,7 @@ var (
 	namespace  string
 	kubeconfig string
 	context    string
-	configJSON string
-	configYAML string
+	config     string
 
 	mcStore       mcmodel.MCConfigStore
 	istioStore    model.ConfigStore
@@ -67,16 +63,13 @@ var (
 func main() {
 	flag.Parse()
 
-	// Load the cluster config from the provided json or yaml file
+	// Load the cluster config from the provided as a yaml file
 	var err error
-	if configJSON != "" {
-		clusterConfig, err = loadConfig(configJSON, false)
-		configWatcher = launchConfigWatcher(configJSON, false)
-	} else if configYAML != "" {
-		clusterConfig, err = loadConfig(configYAML, true)
-		configWatcher = launchConfigWatcher(configYAML, true)
+	if config != "" {
+		clusterConfig, err = agent.LoadConfig(config)
+		configWatcher = launchConfigWatcher(config)
 	} else {
-		err = fmt.Errorf("cluster configuration file must be provided with the -configJson or -configYaml flag")
+		err = fmt.Errorf("cluster configuration file must be provided with the -config flag")
 	}
 	if err != nil {
 		log.Errora(err)
@@ -226,29 +219,9 @@ func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
 	return ctl, nil
 }
 
-// loadConfig will load the cluster configuration from the provided JSON file
-func loadConfig(filename string, isYaml bool) (*agent.ClusterConfig, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var config agent.ClusterConfig
-	bytes, _ := ioutil.ReadAll(file)
-	if isYaml {
-		err = yaml.Unmarshal(bytes, &config)
-	} else {
-		err = json.Unmarshal(bytes, &config)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-}
-
-func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
+// launchConfigWatcher will launch a watcher to determine changes in the config
+// file and notify relevant objects about those changes
+func launchConfigWatcher(file string) *fsnotify.Watcher {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Errora(err)
@@ -258,7 +231,7 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 	onFileModified := func() {
 		//Config file modified
 		log.Debug("Config file modified. Reloading.")
-		newClusterConfig, lderr := loadConfig(file, isYaml)
+		newClusterConfig, lderr := agent.LoadConfig(file)
 		if lderr != nil {
 			log.Error("Failed to reload the config file")
 			return
@@ -299,8 +272,8 @@ func launchConfigWatcher(file string, isYaml bool) *fsnotify.Watcher {
 				if (event.IsModify() || event.IsCreate()) && timerC == nil {
 					timerC = time.After(100 * time.Millisecond)
 				}
-			case err := <-watcher.Error:
-				log.Errorf("Watcher error: %v", err)
+			case werr := <-watcher.Error:
+				log.Errorf("Watcher error: %v", werr)
 			}
 		}
 	}()
@@ -323,8 +296,7 @@ func init() {
 		return
 	}
 
-	flag.StringVar(&configJSON, "configJson", "", "Config JSON file to use for the agent configuration")
-	flag.StringVar(&configYAML, "configYaml", "", "Config YAML file to use for the agent configuration")
+	flag.StringVar(&config, "config", "", "Config YAML file to use for the agent configuration")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&context, "context", "", "Kubeconfig context to be used. Only required if out-of-cluster.")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch. Default (or empty string) is all namespaces.")

@@ -50,18 +50,18 @@ type ExposedService struct {
 // ClusterConfig holds all the configuration information about the local
 // cluster as well as the peered remote clusters.
 type ClusterConfig struct {
-	ID string `json:"id" yaml:"ID"`
+	ID string `yaml:"ID"`
 
-	GatewayIP   string `json:"gatewayIP" yaml:"GatewayIP"`
-	GatewayPort uint16 `json:"gatewayPort" yaml:"GatewayPort"`
+	GatewayIP   string `yaml:"GatewayIP"`
+	GatewayPort uint16 `yaml:"GatewayPort"`
 
-	AgentIP   string `json:"agentIP" yaml:"AgentIP"`
-	AgentPort uint16 `json:"agentPort" yaml:"AgentPort"`
+	AgentIP   string `yaml:"AgentIP"`
+	AgentPort uint16 `yaml:"AgentPort"`
 
-	ConnectionMode string `json:"connectionMode" yaml:"ConnectionMode"`
+	ConnectionMode string `yaml:"ConnectionMode"`
 
-	WatchedPeers []ClusterConfig `json:"peers,omitempty" yaml:"WatchedPeers,omitempty"`
-	TrustedPeers []string        `json:"trustedPeers,omitempty" yaml:"TrustedPeers,omitempty"`
+	WatchedPeers []ClusterConfig `yaml:"WatchedPeers,omitempty"`
+	TrustedPeers []string        `yaml:"TrustedPeers,omitempty"`
 }
 
 // IP is implementing the model.ClusterInfo interface

@@ -45,36 +45,36 @@ func TestBindingToDirectIngressConfiguration(t *testing.T) {
 		svcStore string // Filename for baseline Kuberentes services configuration for merging
 		out      string // Filename for generated Istio configuration
 	}{
-		{config: "cluster1.json",
+		{config: "cluster1.yaml",
 			in:  "rshriram-demo-binding.yaml",
 			out: "banix-demo-binding.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in:  "rshriram-demo-exposure.yaml",
 			out: "banix-demo-exposure.yaml"},
-		{config: "cluster1.json",
+		{config: "cluster1.yaml",
 			in:  "reviews-binding.yaml",
 			out: "reviews-directingress-binding.yaml"},
-		{config: "cluster1.json",
+		{config: "cluster1.yaml",
 			in:  "reviews-binding-v1-only.yaml",
 			out: "reviews-directingress-binding-v1-only.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in:    "reviews-exposure-both.yaml",
 			out:   "reviews-directingress-exposure.yaml",
 			store: "reviews-exposure-starter.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in:  "reviews-binding-three-versions.yaml",
 			out: "reviews-binding-three-versions.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in:  "ratings-binding.yaml",
 			out: "ratings-binding.yaml"},
-		{config: "cluster_b_listens_cd.json",
+		{config: "cluster_b_listens_cd.yaml",
 			in:  "ratings-binding-both-cd.yaml",
 			out: "ratings-binding-both-cd.yaml"},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.in, func(t *testing.T) {
-			clusterConfig, err := loadConfig("../../../test/mc-agent/" + tc.config)
+			clusterConfig, err := agent.LoadConfig("../../../test/mc-agent/" + tc.config)
 			if err != nil {
 				t.Fatal(err)
 			}

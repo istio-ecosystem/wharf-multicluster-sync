@@ -18,6 +18,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/istio-ecosystem/wharf-multicluster-sync/multicluster/pkg/agent"
 	"istio.io/istio/pilot/test/util"
 )
 
@@ -27,23 +28,23 @@ func TestBindingToConfigurationEgressIngress(t *testing.T) {
 		in     string
 		out    string
 	}{
-		{config: "cluster1.json",
+		{config: "cluster1.yaml",
 			in:  "sample-binding.yaml",
 			out: "sample-binding.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in:  "sample-exposure.yaml",
 			out: "sample-exposure.yaml"},
-		{config: "cluster1.json",
+		{config: "cluster1.yaml",
 			in:  "rshriram-demo-binding.yaml",
 			out: "rshriram-demo-binding.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in:  "rshriram-demo-exposure.yaml",
 			out: "rshriram-demo-exposure.yaml"},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.in, func(t *testing.T) {
-			clusterConfig, err := loadConfig("../../../test/mc-agent/" + tc.config)
+			clusterConfig, err := agent.LoadConfig("../../../test/mc-agent/" + tc.config)
 			if err != nil {
 				t.Fatal(err)
 			}

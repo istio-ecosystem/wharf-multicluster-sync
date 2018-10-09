@@ -15,7 +15,6 @@
 package agent
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -44,22 +43,22 @@ func TestServiceToBinding(t *testing.T) {
 		in     map[string]string // Map of cluster to exposed svcs on that cluster
 		out    string            // YAML of RSB(s) produced
 	}{
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in: map[string]string{
 				"cluster-b": "sample-exposure.yaml",
 			},
 			out: "sample-exposure.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in: map[string]string{
 				"cluster-b": "rshriram-demo-exposure.yaml",
 			},
 			out: "rshriram-demo-exposure.yaml"},
-		{config: "cluster_a.json",
+		{config: "cluster_a.yaml",
 			in: map[string]string{
 				"cluster-b": "reviews-exposure-both.yaml",
 			},
 			out: "reviews-exposure.yaml"},
-		{config: "cluster_b_listens_cd.json",
+		{config: "cluster_b_listens_cd.yaml",
 			in: map[string]string{
 				"cluster-c": "ratings-exposure.yaml",
 				"cluster-d": "ratings-exposure.yaml",
@@ -73,7 +72,7 @@ func TestServiceToBinding(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.out, func(t *testing.T) {
-			clusterConfig, err := loadConfig("../test/mc-agent/" + tc.config)
+			clusterConfig, err := LoadConfig("../test/mc-agent/" + tc.config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -223,22 +222,4 @@ func createDebugMCConfigStore(configs []istiomodel.Config) (istiomodel.ConfigSto
 		}
 	}
 	return out, nil
-}
-
-// loadConfig will load the cluster configuration from the provided JSON file
-func loadConfig(file string) (*ClusterConfig, error) {
-	jsonFile, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer jsonFile.Close() // nolint: errcheck
-
-	var config ClusterConfig
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	err = json.Unmarshal(bytes, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
 }

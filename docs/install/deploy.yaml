@@ -128,7 +128,7 @@ spec:
           ports:
           - containerPort: 8999
           args:
-          - --configYaml
+          - --config
           - /etc/config/config.yaml
           volumeMounts:
           - name: config

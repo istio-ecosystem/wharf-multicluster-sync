@@ -229,7 +229,6 @@ func configMapToClusterInfo(cm kube_v1.ConfigMap) (mcmodel.ClusterInfo, error) {
 	var err error
 	var config agent.ClusterConfig
 	err = yaml.Unmarshal([]byte(configYAML), &config)
-	// err = json.Unmarshal(byj, &config)
 	if err != nil {
 		return nil, multierror.Prefix(err, "Could not decode config.yaml to ConfigMap")
 	}

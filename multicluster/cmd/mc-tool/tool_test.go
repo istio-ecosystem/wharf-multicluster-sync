@@ -29,10 +29,10 @@ func TestTool(t *testing.T) {
 		out        string // Filename of .golden file (to be used for comparison in future)
 	}{
 		{filename: "reviews-binding.yaml",
-			cmFilename: "cluster1.yaml",
+			cmFilename: "cluster1_cm.yaml",
 			out:        "reviews-binding.yaml"},
 		{filename: "reviews-exposure.yaml",
-			cmFilename: "cluster1.yaml",
+			cmFilename: "cluster1_cm.yaml",
 			out:        "reviews-exposure.yaml"},
 	}
 
