@@ -3,6 +3,7 @@ set -o errexit
 
 #AGENT_NS=default
 AGENT_NS=istio-system
+INTERMESH_PORT=31444
 
 if ! [ -z "$3" ]; then
     echo "Unimplemented: Create config map for multiple services. Use one peer for now."
@@ -28,6 +29,7 @@ fi
 
 CLIENT_IP=`kubectl --context ${CLIENT_NAME} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 shift
+kubectl --context ${CLIENT_NAME} patch service istio-ingressgateway -n istio-system --type=json --patch='[{"op": "add", "path": "/spec/ports/0", "value": {"name": "tls-intermesh", "port": $INTERMESH_PORT, "nodePort": $INTERMESH_PORT, "targetPort": $INTERMESH_PORT}}]'
 
 if [ "$#" -eq 0 ]; 
 then
@@ -54,7 +56,7 @@ done
 WatchedPeers:
       - ID: $SERVER_ID
         GatewayIP: $SERVER_IP
-        GatewayPort: 80
+        GatewayPort: $INTERMESH_PORT
         AgentIP: $SERVER_AGENT_IP
         AgentPort: 80
         ConnectionMode: $CONNECTION_MODE
@@ -76,7 +78,7 @@ data:
   config.yaml: |
       ID: $CLIENT_ID
       GatewayIP: $CLIENT_IP
-      GatewayPort: 80
+      GatewayPort: $INTERMESH_PORT
       AgentPort: 8999
       TrustedPeers:
       - "*"
