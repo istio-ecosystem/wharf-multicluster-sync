@@ -64,6 +64,11 @@ type ClusterConfig struct {
 	TrustedPeers []string        `yaml:"TrustedPeers,omitempty"`
 }
 
+// Gateway is implementing the model.ClusterInfo interface
+func (cc ClusterConfig) Gateway() (string, uint32) {
+	return cc.GatewayIP, uint32(cc.GatewayPort)
+}
+
 // IP is implementing the model.ClusterInfo interface
 func (cc ClusterConfig) IP(name string) string {
 	if name == cc.ID {

@@ -29,7 +29,7 @@ spec:
     - reviews.default.svc.cluster.local
     port:
       name: reviews-default-80
-      number: 80
+      number: 81
       protocol: TLS
     tls: {}
 ---
@@ -48,7 +48,7 @@ spec:
   - reviews.default.svc.cluster.local
   tls:
   - match:
-    - port: 80
+    - port: 81
       sniHosts:
       - reviews.default.svc.cluster.local
     route:

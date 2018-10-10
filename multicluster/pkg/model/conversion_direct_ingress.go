@@ -58,7 +58,7 @@ func ConvertBindingsAndExposuresDirectIngress(mcs []istiomodel.Config, ci Cluste
 		}
 		sep, ok := mc.Spec.(*v1alpha1.ServiceExpositionPolicy)
 		if ok {
-			istio, err = convertSEPDirectIngress(mc, sep, drs)
+			istio, err = convertSEPDirectIngress(mc, sep, drs, ci)
 		}
 		if err != nil {
 			return out, outServices, multierror.Prefix(err, "Could not convert")
@@ -317,7 +317,7 @@ func rsAliasHostname(rs *v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteServi
 	return fmt.Sprintf("%s.%s.svc.cluster.local", rs.Name, remoteServiceNamespace(rs))
 }
 
-func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config) ([]istiomodel.Config, error) {
+func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpositionPolicy, drs map[string]*istiomodel.Config, ci ClusterInfo) ([]istiomodel.Config, error) {
 	out := make([]istiomodel.Config, 0)
 
 	for _, remote := range sep.Exposed {
@@ -326,12 +326,12 @@ func convertSEPDirectIngress(config istiomodel.Config, sep *v1alpha1.ServiceExpo
 			return out, err
 		}
 
-		gw, err := expositionToGatewayDirectIngress(remote, config)
+		gw, err := expositionToGatewayDirectIngress(remote, config, ci)
 		if err != nil {
 			return out, err
 		}
 
-		vs, err := expositionToVirtualServiceDirectIngress(remote, config)
+		vs, err := expositionToVirtualServiceDirectIngress(remote, config, ci)
 		if err != nil {
 			return out, err
 		}
@@ -422,7 +422,9 @@ func getSubset(rule *v1alpha3.DestinationRule, name string) *v1alpha3.Subset {
 	return nil
 }
 
-func expositionToGatewayDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
+func expositionToGatewayDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config, ci ClusterInfo) (*istiomodel.Config, error) {
+	_, port := ci.Gateway()
+
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.Gateway.Type,
@@ -436,7 +438,7 @@ func expositionToGatewayDirectIngress(es *v1alpha1.ServiceExpositionPolicy_Expos
 			Servers: []*v1alpha3.Server{
 				&v1alpha3.Server{
 					Port: &v1alpha3.Port{
-						Number:   80,
+						Number:   port,
 						Protocol: "TLS",
 						Name:     fmt.Sprintf("%s-%s-%d", es.Name, getNamespace(config), 80),
 					},
@@ -454,7 +456,9 @@ func expositionToGatewayDirectIngress(es *v1alpha1.ServiceExpositionPolicy_Expos
 }
 
 // expositionToVirtualServiceDirectIngress() creates a VirtualService with sniHosts
-func expositionToVirtualServiceDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config) (*istiomodel.Config, error) {
+func expositionToVirtualServiceDirectIngress(es *v1alpha1.ServiceExpositionPolicy_ExposedService, config istiomodel.Config, ci ClusterInfo) (*istiomodel.Config, error) {
+	_, port := ci.Gateway()
+
 	return &istiomodel.Config{
 		ConfigMeta: istiomodel.ConfigMeta{
 			Type:        istiomodel.VirtualService.Type,
@@ -472,7 +476,7 @@ func expositionToVirtualServiceDirectIngress(es *v1alpha1.ServiceExpositionPolic
 					Match: []*v1alpha3.TLSMatchAttributes{
 						&v1alpha3.TLSMatchAttributes{
 							SniHosts: []string{esHostname(config, es)},
-							Port:     80,
+							Port:     port,
 						},
 					},
 					Route: []*v1alpha3.DestinationWeight{

@@ -34,12 +34,14 @@ import (
 	kube_v1 "k8s.io/api/core/v1"
 )
 
-// TODO Merge with version in pkg/agent/config/kube/crd?
+// TODO Replace with ClusterConfig from pkg/agent/config/kube/crd?
 // debugClusterInfo simulates the function of K8s Cluster Registry
 // https://github.com/kubernetes/cluster-registry in unit tests.
 type debugClusterInfo struct {
-	ips   map[string]string
-	ports map[string]uint32
+	gateway string
+	port    uint32
+	ips     map[string]string
+	ports   map[string]uint32
 }
 
 func TestReconcileBinding(t *testing.T) {
@@ -170,6 +172,7 @@ func TestReconcileBinding(t *testing.T) {
 
 func TestReconcileExposure(t *testing.T) {
 	ci := debugClusterInfo{
+		port: 80,
 		ips: map[string]string{
 			"clusterC": "127.0.0.1",
 			"cluster2": "127.0.0.1",
@@ -538,6 +541,10 @@ func checkEqualConfigMetas(configs []istiomodel.Config, expected []istiomodel.Co
 
 	// Success, all were found
 	return nil
+}
+
+func (ci debugClusterInfo) Gateway() (string, uint32) {
+	return ci.gateway, ci.port
 }
 
 func (ci debugClusterInfo) IP(name string) string {

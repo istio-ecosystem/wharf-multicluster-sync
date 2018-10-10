@@ -42,7 +42,13 @@ const (
 
 // ClusterInfo gets the IP and port for a cluster's ingress
 type ClusterInfo interface {
+	// Gateway gives the host/port used for exposing
+	Gateway() (string, uint32)
+
+	// IP gives the IP address (typically for binding)
 	IP(name string) string
+
+	// Port gives the remote port (typically for binding)
 	Port(name string) uint32
 }
 
