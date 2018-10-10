@@ -181,7 +181,7 @@ metadata:
   namespace: istio-system
 spec:
   hosts:
-  - "mc-agent.istio.io"
+  - "*"
   gateways:
   - mc-gateway
   http:
@@ -193,3 +193,13 @@ spec:
         host: mc-agent.istio-system.svc.cluster.local
         port:
           number: 8999
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+ name: mc-agent
+spec:
+ host: mc-agent.istio-system.svc.cluster.local
+ trafficPolicy:
+   tls:
+     mode: DISABLE
