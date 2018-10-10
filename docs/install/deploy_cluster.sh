@@ -3,6 +3,7 @@ set -o errexit
 
 #AGENT_NS=default
 AGENT_NS=istio-system
+INTERMESH_PORT=31444
 
 if ! [ -z "$3" ]; then
     echo "Unimplemented: Create config map for multiple services. Use one peer for now."
@@ -54,7 +55,7 @@ done
 WatchedPeers:
       - ID: $SERVER_ID
         GatewayIP: $SERVER_IP
-        GatewayPort: 80
+        GatewayPort: $INTERMESH_PORT
         AgentIP: $SERVER_AGENT_IP
         AgentPort: 80
         ConnectionMode: $CONNECTION_MODE
@@ -76,7 +77,7 @@ data:
   config.yaml: |
       ID: $CLIENT_ID
       GatewayIP: $CLIENT_IP
-      GatewayPort: 80
+      GatewayPort: $INTERMESH_PORT
       AgentPort: 8999
       TrustedPeers:
       - "*"
