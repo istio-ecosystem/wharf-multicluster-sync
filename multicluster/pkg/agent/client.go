@@ -187,7 +187,10 @@ func (c *Client) callPeer() (*ExposedServices, error) {
 		agentPort = c.peer.GatewayPort
 	}
 	url := fmt.Sprintf("http://%s:%d/exposed/%s", agentIP, agentPort, c.config.ID)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Add("Host", "mc-agent.istio.io")
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

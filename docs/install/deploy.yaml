@@ -120,7 +120,7 @@ spec:
       serviceAccountName: multi-cluster-agent-service-account
       containers:
         - name: mcagent
-          image: "docker.io/ymesika/mcagent:0.1.2"
+          image: "docker.io/ymesika/mcagent:0.1.3"
           imagePullPolicy: Always
           env:
           - name: MC_STYLE
@@ -172,7 +172,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "*"
+    - "mc-agent.istio.io"
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -181,7 +181,7 @@ metadata:
   namespace: istio-system
 spec:
   hosts:
-  - "*"
+  - "mc-agent.istio.io"
   gateways:
   - mc-gateway
   http:
