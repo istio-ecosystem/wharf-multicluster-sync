@@ -73,10 +73,10 @@ func tool() {
 	if mcStyle == "" {
 		// If the user did not specify --mc-style, and there is no MC_STYLE var, default to direct ingress style
 		if os.Getenv(mcmodel.IstioConversionStyleKey) == "" {
-			os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.DirectIngressStyle)  // nolint: errcheck
+			os.Setenv(mcmodel.IstioConversionStyleKey, mcmodel.DirectIngressStyle) // nolint: errcheck
 		}
 	} else {
-		os.Setenv(mcmodel.IstioConversionStyleKey, mcStyle)  // nolint: errcheck
+		os.Setenv(mcmodel.IstioConversionStyleKey, mcStyle) // nolint: errcheck
 	}
 
 	if filename == "" || cmFilename == "" {
@@ -151,8 +151,18 @@ func readAndConvert(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs [
 		istiomodel.ServiceEntry,
 	}
 	err = writeIstioYAMLOutput(configDescriptor, istioConfig, writer)
-	// TODO also write k8sSvcs, if any
-	_ = k8sSvcs
+	if err != nil {
+		return multierror.Prefix(err, "couldn't write Istio yaml")
+	}
+
+	if len(k8sSvcs) > 0 {
+		writer.Write([]byte("---\n")) // nolint: errcheck
+		err = writeK8sYAMLOutput(k8sSvcs, writer)
+		if err != nil {
+			return multierror.Prefix(err, "couldn't write K8s yaml")
+		}
+	}
+
 	return err
 }
 
@@ -176,8 +186,12 @@ func convertToGo(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs []ku
 		}
 	}
 
-	// TODO also write k8sSvcs, if any
-	_ = k8sSvcs
+	for _, k8sSvc := range k8sSvcs {
+		_, err = fmt.Println(render.Render(k8sSvc.Spec))
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -254,6 +268,22 @@ func writeIstioYAMLOutput(descriptor istiomodel.ConfigDescriptor, configs []isti
 		}
 		writer.Write(bytes) // nolint: errcheck
 		if i+1 < len(configs) {
+			writer.Write([]byte("---\n")) // nolint: errcheck
+		}
+	}
+
+	return nil
+}
+
+func writeK8sYAMLOutput(svcs []kube_v1.Service, writer io.Writer) error {
+	for i, svc := range svcs {
+		bytes, err := yaml.Marshal(svc)
+		if err != nil {
+			log.Errorf("Could not convert %v to YAML: %v", svc, err)
+			continue
+		}
+		writer.Write(bytes) // nolint: errcheck
+		if i+1 < len(svcs) {
 			writer.Write([]byte("---\n")) // nolint: errcheck
 		}
 	}
