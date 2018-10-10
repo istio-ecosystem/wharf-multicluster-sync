@@ -29,7 +29,7 @@ fi
 
 CLIENT_IP=`kubectl --context ${CLIENT_NAME} get service istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 shift
-kubectl --context ${CLIENT_NAME} patch service istio-ingressgateway -n istio-system --type=json --patch='[{"op": "add", "path": "/spec/ports/0", "value": {"name": "tls-intermesh", "port": 31444, "nodePort": 31444, "targetPort": 31444}}]'
+kubectl --context ${CLIENT_NAME} patch service istio-ingressgateway -n istio-system --type=json --patch='[{"op": "add", "path": "/spec/ports/0", "value": {"name": "tls-intermesh", "port": $INTERMESH_PORT, "nodePort": $INTERMESH_PORT, "targetPort": $INTERMESH_PORT}}]'
 
 if [ "$#" -eq 0 ]; 
 then
