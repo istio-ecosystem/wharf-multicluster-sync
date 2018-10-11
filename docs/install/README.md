@@ -61,9 +61,9 @@ To cleanup the multicluster agents,
 kubectl --context $CLUSTER1 delete -f deploy.yaml 
 kubectl --context $CLUSTER2 delete -f deploy.yaml 
 kubectl --context $CLUSTER3 delete -f deploy.yaml
-kubectl --context $CLUSTER1 delete cm mc-configuration 
-kubectl --context $CLUSTER2 delete cm mc-configuration 
-kubectl --context $CLUSTER3 delete cm mc-configuration 
+kubectl --context $CLUSTER1 delete cm mc-configuration -n istio-system
+kubectl --context $CLUSTER2 delete cm mc-configuration -n istio-system
+kubectl --context $CLUSTER3 delete cm mc-configuration -n istio-system
 kubectl --context $CLUSTER1 -n istio-system patch service istio-ingressgateway --type=json --patch='[{"op": "test", "path": "/spec/ports/0/port", "value": 31444}, {"op": "remove", "path": "/spec/ports/0"}]' || true
 kubectl --context $CLUSTER2 -n istio-system patch service istio-ingressgateway --type=json --patch='[{"op": "test", "path": "/spec/ports/0/port", "value": 31444}, {"op": "remove", "path": "/spec/ports/0"}]' || true
 kubectl --context $CLUSTER3 -n istio-system patch service istio-ingressgateway --type=json --patch='[{"op": "test", "path": "/spec/ports/0/port", "value": 31444}, {"op": "remove", "path": "/spec/ports/0"}]' || true
