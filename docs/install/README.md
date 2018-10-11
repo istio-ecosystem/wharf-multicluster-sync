@@ -69,7 +69,7 @@ kubectl --context $CLUSTER2 -n istio-system patch service istio-ingressgateway -
 kubectl --context $CLUSTER3 -n istio-system patch service istio-ingressgateway --type=json --patch='[{"op": "test", "path": "/spec/ports/0/port", "value": 31444}, {"op": "remove", "path": "/spec/ports/0"}]' || true
 ```
 
-## Running on two clusters
+# Running on two clusters
 
 To run a version of tutorial that runs on two clusters, we only need `$CLUSTER1` and `$CLUSTER2`. In order to peer these clusters, do the following:
 
