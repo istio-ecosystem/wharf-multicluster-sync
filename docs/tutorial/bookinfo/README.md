@@ -164,3 +164,25 @@ kubectl --context $CLUSTER2 delete -f bookinfo-reviews-v1.yaml
 kubectl --context $CLUSTER2 delete -f bookinfo-reviews-v2.yaml
 kubectl --context $CLUSTER3 delete -f bookinfo-ratings.yaml
 ```
+
+
+# Running on two clusters
+
+To run a version of tutorial that runs on two clusters, we only need
+`$CLUSTER1` and `$CLUSTER2`. In this version, _ratings_ is
+run on `$CLUSTER1` and gets exposed to `$CLUSTER2`. The commands to
+run the above demo are as follows:
+
+```
+kubectl --context $CLUSTER1 apply -f bookinfo-norating-noreviews.yaml
+kubectl --context $CLUSTER1 apply -f bookinfo-gateway.yaml
+kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v1.yaml
+kubectl --context $CLUSTER2 apply -f reviews-exposure.yaml
+```
+
+```
+kubectl --context $CLUSTER1 apply -f bookinfo-ratings.yaml
+kubectl --context $CLUSTER1 apply -f ratings-exposure.yaml
+
+kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v2.yaml
+```
