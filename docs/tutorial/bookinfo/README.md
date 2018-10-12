@@ -99,8 +99,8 @@ Note that it may take up to 30 seconds before the change to potential mode takes
 ## Deploy and expose Ratings
 
 ```
-kubectl --context $CLUSTER3 apply -f bookinfo-ratings.yaml
-kubectl --context $CLUSTER3 apply -f ratings-exposure.yaml
+kubectl --context $CLUSTER1 apply -f bookinfo-ratings.yaml
+kubectl --context $CLUSTER1 apply -f ratings-exposure.yaml
 ```
 
 ### Optional: Make configuration live
@@ -109,7 +109,7 @@ kubectl --context $CLUSTER3 apply -f ratings-exposure.yaml
 show how listing of potential remote services and making them live.
 
 First, verify that a new RemoteServiceBinding was created on $CLUSTER2 after the service
-on $CLUSTER3 was created
+on $CLUSTER1 was created
 
 ```
 kubectl --context $CLUSTER2 get remoteservicebindings
@@ -156,33 +156,11 @@ To remove the demo artifacts, execute the following:
 ```
 kubectl --context $CLUSTER2 delete -f reviews-exposure.yaml
 kubectl --context $CLUSTER1 delete service reviews
-kubectl --context $CLUSTER3 delete -f ratings-exposure.yaml
+kubectl --context $CLUSTER1 delete -f ratings-exposure.yaml
 kubectl --context $CLUSTER2 delete service ratings
 kubectl --context $CLUSTER1 delete -f bookinfo-norating-noreviews.yaml
 kubectl --context $CLUSTER1 delete -f bookinfo-gateway.yaml
 kubectl --context $CLUSTER2 delete -f bookinfo-reviews-v1.yaml
 kubectl --context $CLUSTER2 delete -f bookinfo-reviews-v2.yaml
-kubectl --context $CLUSTER3 delete -f bookinfo-ratings.yaml
-```
-
-
-# Running on two clusters
-
-To run a version of tutorial that runs on two clusters, we only need
-`$CLUSTER1` and `$CLUSTER2`. In this version, _ratings_ is
-run on `$CLUSTER1` and gets exposed to `$CLUSTER2`. The commands to
-run the above demo are as follows:
-
-```
-kubectl --context $CLUSTER1 apply -f bookinfo-norating-noreviews.yaml
-kubectl --context $CLUSTER1 apply -f bookinfo-gateway.yaml
-kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v1.yaml
-kubectl --context $CLUSTER2 apply -f reviews-exposure.yaml
-```
-
-```
-kubectl --context $CLUSTER1 apply -f bookinfo-ratings.yaml
-kubectl --context $CLUSTER1 apply -f ratings-exposure.yaml
-
-kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v2.yaml
+kubectl --context $CLUSTER1 delete -f bookinfo-ratings.yaml
 ```
