@@ -10,6 +10,7 @@ IMAGE_TAG:=develop
 
 # Go parameters
 GOCMD=go
+GOBUILD=$(GOCMD) build
 
 # Lint
 gometalinter=gometalinter.v2
@@ -25,10 +26,16 @@ clean:
 	$(GOCMD) clean
 	rm -rf ./build
 
-build:
+build: docker cli
+
+docker:
 	mkdir -p ./build/docker
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./build/docker/mcagent $(LDFLAGS) -ldflags "-X main.version=$(IMAGE_TAG)" ./cmd/mc-agent
 	docker build -t $(DOCKER_REPO)/mcagent:$(IMAGE_TAG) -f mcagent.Dockerfile ./build/docker
+
+cli:
+	$(GOBUILD) -o build/mc-tool cmd/mc-tool/*.go
+	echo Genered binary build/mc-tool
 	
 push:
 	docker push $(DOCKER_REPO)/mcagent:$(IMAGE_TAG)
