@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster1
+data:
+  config.yaml: |
+      ID: cluster1
+      GatewayIP: 169.62.129.91
+      GatewayPort: 31444
+      AgentPort: 8999
+      TrustedPeers:
+      - "*"
+      WatchedPeers:
+      - ID: cluster2
+        GatewayIP: 169.62.214.229
+        GatewayPort: 31444
+        AgentIP: 169.62.214.229
+        AgentPort: 80
+        ConnectionMode: 

@@ -21,7 +21,7 @@ Then try the [Multicluster bookinfo tutorial](docs/tutorial/bookinfo/README.md).
 
 ### Command line
 
-UNDER CONSTRUCTION [command-line tutorial](docs/tutorial/command-line/README.md).
+[Command-line tutorial](docs/tutorial/command-line/README.md).
 
 
 ## User Experience

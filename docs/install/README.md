@@ -48,6 +48,7 @@ The script deploys the agent and configures it with the Istio Gateway of their p
 Now that the Multicluster control plane has been configured we can run demos
 
 - [Book Info](../tutorial/bookinfo/README.md)
+- [Book Info via Command Line](../tutorial/command-line/README.md)
 
 # Cleanup
 
