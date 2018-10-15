@@ -82,6 +82,12 @@ func TestReconcileBinding(t *testing.T) {
 			additions:    loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
 			svcAdditions: loadK8sServiceList("reviews-directingress-binding.yaml.golden", t),
 			style:        mcmodel.DirectIngressStyle},
+		// Case 2: if we have already configured, adding again won't change things, even if cluster IP has been set
+		{added: loadConfig("reviews-binding.yaml", t),
+			istioConfig: loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+			initialServices: loadK8sServiceListFrom("reviews-directingress-binding-clusterip-starter.yaml",
+				"../test/expose-binding/", t),
+			style: mcmodel.DirectIngressStyle},
 	}
 
 	for i, tc := range tt {

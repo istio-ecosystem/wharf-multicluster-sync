@@ -96,7 +96,17 @@ func (r *reconciler) AddMulticlusterConfig(newconfig istiomodel.Config) (*Config
 		if !ok {
 			svcAdditions = append(svcAdditions, svc)
 		} else {
-			if !reflect.DeepEqual(svc.Spec, orig.Spec) {
+			// Compare, but don't include generated immutable field ClusterIP in comparison
+			origNoIP := orig.Spec
+			origNoIP.ClusterIP = ""
+			if !reflect.DeepEqual(svc.Spec, origNoIP) {
+				// New version is different in some way besides ClusterIP.  Make a new one,
+				// but use the UID and ClusterIP of the old one so that we survive K8s
+				// immutability requirement on ClusterIP.
+				newSpec := svc.Spec
+				origSpec := orig.Spec
+				newSpec.ClusterIP = origSpec.ClusterIP
+				svc.UID = orig.UID
 				svcModifications = append(svcModifications, svc)
 			}
 		}
