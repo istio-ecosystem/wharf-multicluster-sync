@@ -27,6 +27,7 @@ type Client struct {
 
 	store      mcmodel.MCConfigStore
 	istioStore model.ConfigStore
+	connected  bool
 }
 
 // NewClient will create a new agent client that connects to a peered server on
@@ -76,8 +77,15 @@ func (c *Client) close() {
 func (c *Client) update() {
 	exposed, err := c.callPeer()
 	if err != nil {
-		log.Debugf("Peer agent [%s] is not accessible. %v", c.peer.ID, err)
+		c.connected = false
+		log.Debugf("Peer agent [%s] is not accessible. Error: %v", c.peer.ID, err)
 		return
+	}
+
+	// Print debugging message one time
+	if !c.connected {
+		log.Debugf("Peer agent [%s] is accessible. Ready.", c.peer.ID)
+		c.connected = true
 	}
 
 	// Get the connection mode for the peer. Can either be live or potential.
