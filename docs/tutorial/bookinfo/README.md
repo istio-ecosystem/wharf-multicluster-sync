@@ -85,7 +85,7 @@ Reload _http://`${GATEWAY_URL}`/productpage_ in the browser.  Verify that review
 
 ## Deploying and Exposing the Ratings microservice
 
-We will now deploy a _ratings_ service on cluster3 and expose it.
+We will now deploy a _ratings_ service on cluster1 and expose it.
 
 ### Optional: Manually accept configuration
 
@@ -114,7 +114,7 @@ on $CLUSTER1 was created
 
 ```sh
 kubectl --context $CLUSTER2 get remoteservicebindings
-kubectl --context $CLUSTER2 edit remoteservicebinding cluster3-services
+kubectl --context $CLUSTER2 edit remoteservicebinding cluster1-services
 ```
 
 Change `connection: potential`
