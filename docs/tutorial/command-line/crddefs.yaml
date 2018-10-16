@@ -1,0 +1,30 @@
+# Add the Multi-Cluster CRDs
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceexpositionpolicies.multicluster.istio.io  
+spec:
+  group: multicluster.istio.io
+  names:
+    kind: ServiceExpositionPolicy
+    listKind: ServiceExpositionPolicyList
+    plural: serviceexpositionpolicies
+    singular: serviceexpositionpolicy
+  scope: Namespaced
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: remoteservicebindings.multicluster.istio.io
+spec:
+  group: multicluster.istio.io
+  names:
+    kind: RemoteServiceBinding
+    listKind: RemoteServiceBindingList
+    plural: remoteservicebindings
+    singular: remoteservicebinding
+  scope: Namespaced
+  version: v1alpha1
+---

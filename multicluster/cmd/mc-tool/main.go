@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/ghodss/yaml"
 	multierror "github.com/hashicorp/go-multierror"
@@ -40,7 +41,7 @@ import (
 
 	// Importing the API messages so that when resource events are fired the
 	// resource will be parsed into a message object
-	_ "github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
+	"github.com/istio-ecosystem/wharf-multicluster-sync/api/multicluster/v1alpha1"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -59,6 +60,9 @@ var (
 
 	// gengo allows the tool to generate Go code (used for writing Go tests)
 	gengo bool
+
+	// genbinding should match an acceptor cluster; if it is set the tool generates as if a binding for gencluster is the input
+	genbinding string
 
 	// mcStyle defines the output as DIRECT_INGRESS or EGRESS_INGRESS
 	mcStyle string
@@ -130,16 +134,24 @@ func init() {
 	flag.StringVar(&clusters, "cluster", "", "DEPRECATED; e.g. cluster=host:port[,cluster2=host2:port2]")
 	flag.StringVar(&mcStyle, "mc-style", "", "Generation style: DIRECT_INGRESS|EGRESS_INGRESS")
 	flag.BoolVar(&gengo, "gengo", false, "Generate Go code instead of YAML (for generating Go tests)")
+	flag.StringVar(&genbinding, "genbinding", "", "Generate Remote Service Binding for cluster")
 }
 
 // readAndConvert converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to Istio config .yaml file
-func readAndConvert(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service, reader io.Reader, writer io.Writer) error {
+func readAndConvert(cc agent.ClusterConfig, store istiomodel.ConfigStore, svcs []kube_v1.Service, reader io.Reader, writer io.Writer) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
 	}
 
-	istioConfig, k8sSvcs, err := mcmodel.ConvertBindingsAndExposures2(configs, ci, store, svcs)
+	if genbinding != "" {
+		configs, err = sepToRsb(genbinding, cc.ID, configs)
+		if err != nil {
+			return err
+		}
+	}
+
+	istioConfig, k8sSvcs, err := mcmodel.ConvertBindingsAndExposures2(configs, cc, store, svcs)
 	if err != nil {
 		return err
 	}
@@ -168,13 +180,20 @@ func readAndConvert(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs [
 
 // convertToGo converts a .yaml file of ServiceExposurePolicy and RemoteServiceBinding to
 // Istio config Go source code fragment.
-func convertToGo(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs []kube_v1.Service, reader io.Reader, writer io.Writer) error {
+func convertToGo(cc agent.ClusterConfig, store istiomodel.ConfigStore, svcs []kube_v1.Service, reader io.Reader, writer io.Writer) error {
 	configs, err := readConfigs(reader)
 	if err != nil {
 		return err
 	}
 
-	istioConfig, k8sSvcs, err := mcmodel.ConvertBindingsAndExposures2(configs, ci, store, svcs)
+	if genbinding != "" {
+		configs, err = sepToRsb(genbinding, cc.ID, configs)
+		if err != nil {
+			return err
+		}
+	}
+
+	istioConfig, k8sSvcs, err := mcmodel.ConvertBindingsAndExposures2(configs, cc, store, svcs)
 	if err != nil {
 		return err
 	}
@@ -198,7 +217,7 @@ func convertToGo(ci mcmodel.ClusterInfo, store istiomodel.ConfigStore, svcs []ku
 
 // parseMCConfig parses the kind of ConfigMap that the agents are configured with, mapping
 // cluster name to host/port
-func parseMCConfig(filename string) (mcmodel.ClusterInfo, error) {
+func parseMCConfig(filename string) (agent.ClusterConfig, error) {
 
 	inConfig, err := os.Open(cmFilename)
 	if err != nil {
@@ -210,14 +229,14 @@ func parseMCConfig(filename string) (mcmodel.ClusterInfo, error) {
 
 	data, err := ioutil.ReadAll(inConfig)
 	if err != nil {
-		return nil, err
+		return agent.ClusterConfig{}, err
 	}
 
 	codecs := serializer.NewCodecFactory(clientsetscheme.Scheme)
 	deserializer := codecs.UniversalDeserializer()
 	obj, _, err := deserializer.Decode(data, nil, nil)
 	if err != nil {
-		return nil, err
+		return agent.ClusterConfig{}, err
 	}
 
 	inConfig.Close() // nolint: errcheck
@@ -234,17 +253,17 @@ func parseMCConfig(filename string) (mcmodel.ClusterInfo, error) {
 	return configMapToClusterInfo(outConfigs[0])
 }
 
-func configMapToClusterInfo(cm kube_v1.ConfigMap) (mcmodel.ClusterInfo, error) {
+func configMapToClusterInfo(cm kube_v1.ConfigMap) (agent.ClusterConfig, error) {
 	configYAML, ok := cm.Data["config.yaml"]
 	if !ok {
-		return nil, fmt.Errorf("ConfigMap does not include 'config.yaml' file") // nolint: golint
+		return agent.ClusterConfig{}, fmt.Errorf("ConfigMap does not include 'config.yaml' file") // nolint: golint
 	}
 
 	var err error
 	var config agent.ClusterConfig
 	err = yaml.Unmarshal([]byte(configYAML), &config)
 	if err != nil {
-		return nil, multierror.Prefix(err, "Could not decode config.yaml to ConfigMap")
+		return config, multierror.Prefix(err, "Could not decode config.yaml to ConfigMap")
 	}
 	return config, nil
 }
@@ -349,4 +368,58 @@ func createConfigStore(configs []istiomodel.Config) (istiomodel.ConfigStore, err
 		}
 	}
 	return out, nil
+}
+
+// sepToRsb does the same work as agent.createRemoteServiceBinding()
+func sepToRsb(clientID string, serverID string, svcs []istiomodel.Config) ([]istiomodel.Config, error) {
+	out := make([]istiomodel.Config, 0)
+	for _, svc := range svcs {
+		sep, ok := svc.Spec.(*v1alpha1.ServiceExpositionPolicy)
+		//fmt.Printf("@@@ ecs svc is %#v, a %T\n", svc, svc)
+		if ok {
+			// fmt.Printf("@@@ ecs rsb is %#v, a %T\n", rsb, rsb)
+			name := strings.ToLower(serverID) + "-services"
+			services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(sep.Exposed))
+			for i, exposed := range sep.Exposed {
+				// fmt.Printf("@@@ ecs exposed is %#v, a %T\n", exposed, exposed)
+				if len(exposed.Clusters) == 0 || contains(exposed.Clusters, clientID) {
+					services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
+						Name:      exposed.Name,
+						Alias:     exposed.Name,
+						Namespace: svc.Namespace,
+						Port:      exposed.Port,
+					}
+				}
+			}
+
+			out = append(out, istiomodel.Config{
+				ConfigMeta: istiomodel.ConfigMeta{
+					Type:    mcmodel.RemoteServiceBinding.Type,
+					Group:   mcmodel.RemoteServiceBinding.Group + istiomodel.IstioAPIGroupDomain,
+					Version: mcmodel.RemoteServiceBinding.Version,
+					Name:    name,
+					// Namespace: ns,
+				},
+				Spec: &v1alpha1.RemoteServiceBinding{
+					Remote: []*v1alpha1.RemoteServiceBinding_RemoteCluster{
+						&v1alpha1.RemoteServiceBinding_RemoteCluster{
+							Cluster:  serverID,
+							Services: services,
+						},
+					},
+				},
+			})
+		}
+	}
+	return out, nil
+}
+
+func contains(a []string, s string) bool {
+	for _, candidate := range a {
+		if candidate == s {
+			return true
+		}
+	}
+
+	return false
 }

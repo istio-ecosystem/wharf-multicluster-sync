@@ -22,10 +22,12 @@ Create the configurations
 ./gen_cluster_config.sh cluster2=$CLUSTER2 cluster1=$CLUSTER1
 ```
 
-Configure the IngressGateways
+Configure the Custom Resource Definition and the IngressGateways
 
 ```
+kubectl --context $CLUSTER1 apply crddefs.yaml
 kubectl --context $CLUSTER1 patch service istio-ingressgateway -n istio-system --type=json --patch='[{"op": "add", "path": "/spec/ports/0", "value": {"name": "tls-intermesh", "port": 31444, "nodePort": 31444, "targetPort": 31444}}]'
+kubectl --context $CLUSTER2 apply crddefs.yaml
 kubectl --context $CLUSTER2 patch service istio-ingressgateway -n istio-system --type=json --patch='[{"op": "add", "path": "/spec/ports/0", "value": {"name": "tls-intermesh", "port": 31444, "nodePort": 31444, "targetPort": 31444}}]'
 ```
 
@@ -86,7 +88,7 @@ kubectl --context $CLUSTER2 get gateways,virtualservices,destinationrules
 ## Bind cluster1 to reviews on cluster2
 
 ```
-mc-tool --genbinding --filename ../bookinfo/reviews-exposure.yaml --mc-conf-filename cluster1-conf.yaml | kubectl --context $CLUSTER1 apply -f -
+mc-tool --genbinding cluster1 --filename ../bookinfo/reviews-exposure.yaml --mc-conf-filename cluster2-conf.yaml | kubectl --context $CLUSTER1 apply -f -
 ```
 
 Upon running the above command the agent created Istio configuration on $CLUSTER2.  Verify that
@@ -99,7 +101,7 @@ kubectl --context $CLUSTER2 get gateways,virtualservices,destinationrules
 You should see a gateway, virtual service, and destination rule for reviews.  The topology
 is now
 
-![Bookinfo with reviews v1](../bookinfo-reviews-v1.png?raw=true "Bookinfo with reviews v1")
+![Bookinfo with reviews v1](../bookinfo/bookinfo-reviews-v1.png?raw=true "Bookinfo with reviews v1")
 
 ## Inspect the binding on cluster1
 
@@ -117,7 +119,7 @@ kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 
 ## Verify that the reviews is present in the UI
 
-![Connected UI](../ui-connected.png?raw=true "Connected UI")
+![Connected UI](../bookinfo/ui-connected.png?raw=true "Connected UI")
 
 Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews are present.
 
@@ -127,7 +129,7 @@ To remove the demo artifacts, execute the following:
 
 ```
 mc-tool --filename ../bookinfo/reviews-exposure.yaml --mc-conf-filename cluster2-conf.yaml | kubectl --context $CLUSTER2 delete -f -
-mc-tool --genbinding --filename ../bookinfo/reviews-exposure.yaml --mc-conf-filename cluster1-conf.yaml | kubectl --context $CLUSTER1 delete -f -
+mc-tool --genbinding cluster1 --filename ../bookinfo/reviews-exposure.yaml --mc-conf-filename cluster2-conf.yaml | kubectl --context $CLUSTER1 delete -f -
 kubectl --context $CLUSTER1 delete service reviews
 kubectl --context $CLUSTER1 delete -f bookinfo-norating-noreviews.yaml
 kubectl --context $CLUSTER1 delete -f bookinfo-gateway.yaml
