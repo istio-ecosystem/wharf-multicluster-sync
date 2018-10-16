@@ -31,7 +31,7 @@ spec:
         sidecar.istio.io/inject: "false"
         scheduler.alpha.kubernetes.io/critical-pod: ""
     spec:
-      serviceAccountName: istio-citadel-service-account-__CLUSTERNAME__
+      serviceAccountName: __SERVICE_ACCOUNT__
       containers:
         - name: citadel
           image: "docker.io/istio/citadel:1.0.0"
@@ -102,19 +102,11 @@ spec:
                 - s390x
 
 ---
-
-#
-#
-# the following already exists; it needs to be simply modified withh __CLUSTERNAME__
-#
-#
-#
-
 # Source: istio/charts/security/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: istio-citadel-service-account-__CLUSTERNAME__
+  name: __SERVICE_ACCOUNT__
   namespace: istio-system
   labels:
     app: security
@@ -138,5 +130,5 @@ roleRef:
   name: istio-citadel-istio-system
 subjects:
   - kind: ServiceAccount
-    name: istio-citadel-service-account-__CLUSTERNAME__
+    name: __SERVICE_ACCOUNT__
     namespace: istio-system
