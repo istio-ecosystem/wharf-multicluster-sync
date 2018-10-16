@@ -7,9 +7,9 @@ instructions [here](/istio-ecosystem/wharf-multicluster-sync/tree/master/docs/in
 # Demo
 
 First, install Bookinfo with _details_ and _productpage_ on cluster1.
-The _reviews_ (version:v1) will be on cluster2
+The _reviews_ (v1) will be on cluster2
 
-```
+```sh
 kubectl --context $CLUSTER1 apply -f bookinfo-norating-noreviews.yaml
 kubectl --context $CLUSTER1 apply -f bookinfo-gateway.yaml
 kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v1.yaml
@@ -19,24 +19,24 @@ kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v1.yaml
 
 ## Before the services are connected
 
-Follow the instructions at https://istio.io/docs/examples/bookinfo/#determining-the-ingress-ip-and-port to find Bookinfo.
+Follow [these instructions](https://istio.io/docs/examples/bookinfo/#determining-the-ingress-ip-and-port) to set the base URL (`$GATEWAY_URL`) to the ingress gateway on Cluster1.
 
-Browse to http://${GATEWAY_URL}/productpage to verify that bookinfo is connected and that
-details are present but not reviews.
+Browse to _http://`${GATEWAY_URL}`/productpage_ to verify that bookinfo you can load the main Bookinfo page.  
+Please notice that the book details are present but not reviews as the reviews service is currently not accessible.
 
 ![Unconnected UI](ui-unconnected.png?raw=true "Unconnected UI")
 
-## Expose reviews-v1 on cluster2
+## Expose reviews-v1 on cluster2 to cluster1
 
-We will create a Service Exposition Policy to expose reviews-v1 on cluster2 to services on cluster1.
+Create a `ServiceExpositionPolicy` to expose _reviews-v1_ on _cluster2_ to services on _cluster1_:
 
-```
+```sh
 kubectl --context $CLUSTER2 apply -f reviews-exposure.yaml
 ```
 
-The policy we are applying looks like
+The policy we are applying looks like:
 
-```
+```yaml
 ## Expose the "reviews" service
 apiVersion: multicluster.istio.io/v1alpha1
 kind: ServiceExpositionPolicy
@@ -50,29 +50,30 @@ spec:
 
 It just says to expose _reviews:9080_ to all clusters, all namespaces, within our Root CA.
 
-Upon running the above command the agent created Istio configuration on $CLUSTER2.  Verify that
-the configuration was created
+Upon running the above command the agent created Istio configuration on _Cluster2_.  Verify that
+the configuration was created:
 
-```
+```sh
 kubectl --context $CLUSTER2 get gateways,virtualservices,destinationrules
 ```
 
-You should see a gateway, virtual service, and destination rule for reviews.  The topology
-is now
+You should see a gateway, virtual service, and destination rule for reviews.
+
+The topology is now:
 
 ![Bookinfo with reviews v1](bookinfo-reviews-v1.png?raw=true "Bookinfo with reviews v1")
 
-## Inspect the binding on cluster1
+## Inspect the binding on cluster 1
 
-Exposing on cluster2 caused a _RemoteServiceBinding_ to be created on cluster1.
+Exposing a service on _cluster2_ caused a `RemoteServiceBinding` to be created on _cluster1_ by the MC Agent. You can verify by getting it:
 
-```
+```sh
 kubectl --context $CLUSTER1 get remoteservicebindings
 ```
 
-If the binding is in `live` mode the client-side Istio configuration will be created automatically.
+As the binding is now in `live` mode the client-side Istio configuration has also been created automatically. Verify it:
 
-```
+```sh
 kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 ```
 
@@ -80,7 +81,7 @@ kubectl --context $CLUSTER1 get service,destinationrule,serviceentry
 
 ![Connected UI](ui-connected.png?raw=true "Connected UI")
 
-Reload http://${GATEWAY_URL}/productpage in the browser.  Verify that reviews are present.
+Reload _http://`${GATEWAY_URL}`/productpage_ in the browser.  Verify that reviews are present.
 
 ## Deploying and Exposing the Ratings microservice
 
@@ -98,7 +99,7 @@ Note that it may take up to 30 seconds before the change to potential mode takes
 
 ## Deploy and expose Ratings
 
-```
+```sh
 kubectl --context $CLUSTER1 apply -f bookinfo-ratings.yaml
 kubectl --context $CLUSTER1 apply -f ratings-exposure.yaml
 ```
@@ -111,7 +112,7 @@ show how listing of potential remote services and making them live.
 First, verify that a new RemoteServiceBinding was created on $CLUSTER2 after the service
 on $CLUSTER1 was created
 
-```
+```sh
 kubectl --context $CLUSTER2 get remoteservicebindings
 kubectl --context $CLUSTER2 edit remoteservicebinding cluster3-services
 ```
@@ -124,7 +125,7 @@ step will show it.
 
 As before, exposing ratings created configuration on peer cluster2:
 
-```
+```sh
 kubectl --context $CLUSTER2 get service,destinationrule,serviceentry
 ```
 
@@ -134,7 +135,7 @@ We will now deploy.  There is no need to expose this version of reviews.  The ex
 of the _reviews_ *Service* exposed all pods of all versions.  The new version will be added
 to the normal round-robin.
  
-```
+```sh
 kubectl --context $CLUSTER2 apply -f bookinfo-reviews-v2.yaml
 ```
 
@@ -153,7 +154,7 @@ clusters.
 
 To remove the demo artifacts, execute the following:
 
-```
+```sh
 kubectl --context $CLUSTER2 delete -f reviews-exposure.yaml
 kubectl --context $CLUSTER1 delete service reviews
 kubectl --context $CLUSTER1 delete -f ratings-exposure.yaml
