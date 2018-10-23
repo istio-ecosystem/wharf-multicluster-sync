@@ -92,7 +92,7 @@ We will now deploy a _ratings_ service on cluster1 and expose it.
 *OPTIONAL*: For this tutorial sub-step we will
 show how to configure client-side multicluster agents to run in manual mode.
 
-First, do `kubectl --context $CLUSTER2 edit cm mc-configuration`.  Change `ConnectionMode: live`
+First, do `kubectl --context $CLUSTER2 -n istio-system edit cm mc-configuration`.  Change `ConnectionMode: live`
 to `ConnectionMode: potential` and save.
 
 Note that it may take up to 30 seconds before the change to potential mode takes effect on the agent.  You may wish to do a `sleep 30` to making changes too quickly.

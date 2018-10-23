@@ -12,7 +12,7 @@ clusters.
 
 ## Demo
 
-You'll need three clusters with public IP addresses.
+You'll need two clusters with public IP addresses.
 
 Follow [these instructions](docs/install/README.md) to set up your clusters to share a Root CA
 and install experimental Multicluster Agents.
