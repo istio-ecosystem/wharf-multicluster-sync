@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/ghodss/yaml"
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 // RenderJSON outputs the given data as JSON
@@ -31,7 +32,7 @@ func RenderError(w http.ResponseWriter, statusCode int, err error) {
 func LoadConfig(filename string) (*ClusterConfig, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return nil, multierror.Prefix(err, fmt.Sprintf("can't open %q:", filename))
 	}
 	defer file.Close()
 
@@ -39,7 +40,7 @@ func LoadConfig(filename string) (*ClusterConfig, error) {
 	bytes, _ := ioutil.ReadAll(file)
 	err = yaml.Unmarshal(bytes, &config)
 	if err != nil {
-		return nil, err
+		return nil, multierror.Prefix(err, fmt.Sprintf("can't unmarshal JSON from %q:", filename))
 	}
 
 	return &config, nil

@@ -410,7 +410,8 @@ func ConvertBindingsAndExposuresEgressIngress(mcs []istiomodel.Config, ci Cluste
 	return out, nil
 }
 
-func provenanceAnnotation(config istiomodel.Config) string {
+// ProvenanceAnnotation() returns the annotation value that traces back to a configuration
+func ProvenanceAnnotation(config istiomodel.Config) string {
 	return fmt.Sprintf("%s.%s", namespace(config), config.Name)
 }
 
@@ -423,6 +424,6 @@ func namespace(config istiomodel.Config) string {
 
 func annotations(config istiomodel.Config) map[string]string {
 	return map[string]string{
-		ProvenanceAnnotationKey: provenanceAnnotation(config),
+		ProvenanceAnnotationKey: ProvenanceAnnotation(config),
 	}
 }

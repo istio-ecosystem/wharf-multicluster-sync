@@ -2,7 +2,7 @@
 # Prerequisite
 
 This demo assumes you have configured Istio with multicluster agents.  Follow the
-instructions [here](/istio-ecosystem/wharf-multicluster-sync/tree/master/docs/install/README.md)
+instructions [here](../../install/README.md)
 
 # Demo
 

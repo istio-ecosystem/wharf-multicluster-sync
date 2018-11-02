@@ -375,13 +375,10 @@ func sepToRsb(clientID string, serverID string, svcs []istiomodel.Config) ([]ist
 	out := make([]istiomodel.Config, 0)
 	for _, svc := range svcs {
 		sep, ok := svc.Spec.(*v1alpha1.ServiceExpositionPolicy)
-		//fmt.Printf("@@@ ecs svc is %#v, a %T\n", svc, svc)
 		if ok {
-			// fmt.Printf("@@@ ecs rsb is %#v, a %T\n", rsb, rsb)
 			name := strings.ToLower(serverID) + "-services"
 			services := make([]*v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService, len(sep.Exposed))
 			for i, exposed := range sep.Exposed {
-				// fmt.Printf("@@@ ecs exposed is %#v, a %T\n", exposed, exposed)
 				if len(exposed.Clusters) == 0 || contains(exposed.Clusters, clientID) {
 					services[i] = &v1alpha1.RemoteServiceBinding_RemoteCluster_RemoteService{
 						Name:      exposed.Name,

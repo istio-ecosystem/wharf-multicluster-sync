@@ -109,6 +109,7 @@ func (r *reconciler) AddMulticlusterConfig(newconfig istiomodel.Config) (*Config
 				svc.UID = orig.UID
 				svcModifications = append(svcModifications, svc)
 			}
+			// TODO merge Annotations if multiple remote clusters offer service
 		}
 	}
 
@@ -163,12 +164,45 @@ func (r *reconciler) DeleteMulticlusterConfig(config istiomodel.Config) (*Config
 		}
 	}
 
-	// TODO: if a K8s Service was created by us, and has no local selector matches, delete it
-	_ = svcs
+	origSvcs := indexServices(r.services, svcIndex)
+	svcModifications := make([]kube_v1.Service, 0)
+	svcDeletions := make([]kube_v1.Service, 0)
+	for _, svc := range svcs {
+		orig, ok := origSvcs[svcIndex(svc)]
+		if ok {
+			// There is a service.  If there is an annotation for us, and it is the only one,
+			// delete the service.  If there is annotations for multiple remotes, modify to remove this remote.
+			// Only delete if our annotation is present
+			origAnn, ok := orig.Annotations[model.ProvenanceAnnotationKey]
+			if ok {
+				if lastRemote(origAnn, config) {
+					svcDeletions = append(svcDeletions, svc)
+				} else {
+					newSpec := svc.Spec
+					origSpec := orig.Spec
+					newSpec.ClusterIP = origSpec.ClusterIP
+					svc.UID = orig.UID
+					svcModifications = append(svcModifications, svc)
+				}
+			} else {
+				log.Infof("Ignoring unprovenanced K8s Service %s.%s when reconciling deletion",
+					svc.Name, getK8sNamespace(svc))
+			}
+		}
+	}
 
 	return &ConfigChanges{
 		Deletions: outDeletions,
+		Kubernetes: &KubernetesChanges{
+			Modifications: svcModifications,
+			Deletions:     svcDeletions,
+		},
 	}, err
+}
+
+// lastRemote() returns true for annotations that only refer to this cluster.
+func lastRemote(annotation string, config istiomodel.Config) bool {
+	return annotation == model.ProvenanceAnnotation(config)
 }
 
 func indexServices(svcs []kube_v1.Service, indexFunc func(config kube_v1.Service) string) map[string]kube_v1.Service {
@@ -189,4 +223,12 @@ func getNamespace(config istiomodel.Config) string {
 	}
 	// TODO incorporate parsing $KUBECONFIG similar to routine in istio.io/istio/istioctl/cmd/istioctl/main.go
 	return config.Namespace // kube_v1.NamespaceDefault
+}
+
+func getK8sNamespace(svc kube_v1.Service) string {
+	if svc.Namespace != "" {
+		return svc.Namespace
+	}
+	// TODO incorporate parsing $KUBECONFIG similar to routine in istio.io/istio/istioctl/cmd/istioctl/main.go
+	return kube_v1.NamespaceDefault
 }

@@ -72,6 +72,14 @@ func (cm *ConfigsManagement) McConfigDeleted(config model.Config) {
 		return
 	}
 	storeIstioConfigs(cm.istioStore, changes)
+
+	// Verify the K8s service is in the expected namespace (internal check)
+	for _, deletion := range changes.Deletions {
+		if deletion.Namespace != config.Namespace {
+			log.Warnf("\tCannot delete K8s service %s.%s (expected namespace %q)", deletion.Namespace, deletion.Name, config.Namespace)
+		}
+	}
+
 	storeK8sConfigs(changes.Kubernetes, nsClient)
 }
 

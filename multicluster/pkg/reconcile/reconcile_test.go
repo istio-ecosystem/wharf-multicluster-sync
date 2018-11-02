@@ -67,9 +67,9 @@ func TestReconcileBinding(t *testing.T) {
 		modifications    []istiomodel.Config
 		svcAdditions     []kube_v1.Service
 		svcModifications []kube_v1.Service
-		// TODO svcDeletions []kube_v1.Service
-		wantException bool
-		style         string
+		svcDeletions     []kube_v1.Service
+		wantException    bool
+		style            string
 	}{
 		// Case 0: if we have already configured, adding again won't change things
 		{added: loadConfig("reviews-binding.yaml", t),
@@ -88,6 +88,15 @@ func TestReconcileBinding(t *testing.T) {
 			initialServices: loadK8sServiceListFrom("reviews-directingress-binding-clusterip-starter.yaml",
 				"../test/expose-binding/", t),
 			style: mcmodel.DirectIngressStyle},
+		// Case 3: Deleting
+		{deleted: loadConfig("reviews-binding.yaml", t),
+			istioConfig: loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+			initialServices: loadK8sServiceListFrom("reviews-directingress-binding-clusterip-starter.yaml",
+				"../test/expose-binding/", t),
+			style:        mcmodel.DirectIngressStyle,
+			deletions:    loadIstioConfigList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+			svcDeletions: loadK8sServiceList("reviews-directingress-binding-nonamespace.yaml.golden", t),
+		},
 	}
 
 	for i, tc := range tt {
@@ -153,7 +162,14 @@ func TestReconcileBinding(t *testing.T) {
 					if err != nil {
 						t.Error(multierror.Prefix(err, "Proposed deletions unexpected"))
 					}
-					// TODO Check deletions
+					err = checkEqualServices(delChanges.Kubernetes.Deletions, tc.svcDeletions)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated K8s deletions unexpected:"))
+					}
+					err = checkEqualServices(delChanges.Kubernetes.Modifications, tc.svcModifications)
+					if err != nil {
+						t.Error(multierror.Prefix(err, "Generated K8s modifications unexpected:"))
+					}
 				}
 			}
 

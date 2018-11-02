@@ -67,6 +67,9 @@ func main() {
 	var err error
 	if config != "" {
 		clusterConfig, err = agent.LoadConfig(config)
+		if err != nil {
+			log.Errorf("Could not load config: %v", err)
+		}
 		configWatcher = launchConfigWatcher(config)
 	} else {
 		err = fmt.Errorf("cluster configuration file must be provided with the -config flag")
@@ -78,11 +81,12 @@ func main() {
 	if configWatcher != nil {
 		defer configWatcher.Close()
 	}
+	log.Debugf("Cluster Configuration: %#v", clusterConfig)
 
 	// Set up a Kubernetes API ConfigStore for Istio configs
 	istioStore, err := makeKubeConfigIstioController()
 	if err != nil {
-		log.Errora(err)
+		log.Errorf("Could not make Kube Config Istio controller: %v", err)
 		return
 	}
 
@@ -96,7 +100,7 @@ func main() {
 	desc := model.ConfigDescriptor{mcmodel.ServiceExpositionPolicy, mcmodel.RemoteServiceBinding}
 	cl, err := mccrd.NewClient(kubeconfig, context, desc, namespace)
 	if err != nil {
-		log.Errora(err)
+		log.Errorf("Could not create MC CRD Client: %v", err)
 		return
 	}
 
@@ -155,7 +159,8 @@ func main() {
 	if os.Getenv(mcmodel.IstioConversionStyleKey) == mcmodel.DirectIngressStyle {
 		log.Info("Using Direct Ingress Style")
 	} else {
-		log.Info("Using Egress/Ingress Style")
+		// This style is not fully supported!
+		log.Warn("Using Egress/Ingress Style")
 	}
 
 	// Set up a store wrapper for the Multi-Cluster controller
@@ -191,7 +196,7 @@ func main() {
 
 	close(stopCh)
 	server.Close()
-	configWatcher.Close()
+	// configWatcher will be closed by defer'ed func above
 
 	_ = log.Sync()
 }
@@ -224,7 +229,7 @@ func makeKubeConfigIstioController() (model.ConfigStoreCache, error) {
 func launchConfigWatcher(file string) *fsnotify.Watcher {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Errora(err)
+		log.Errorf("Can't create watcher for %q: %v", file, err)
 		return nil
 	}
 
@@ -281,7 +286,7 @@ func launchConfigWatcher(file string) *fsnotify.Watcher {
 	fileDir, _ := filepath.Split(file)
 	err = watcher.Watch(fileDir)
 	if err != nil {
-		log.Errora(err)
+		log.Errorf("Could not watch %q: %v", fileDir, err)
 		return nil
 	}
 	return watcher
