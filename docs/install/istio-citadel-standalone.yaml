@@ -1,11 +1,6 @@
 ################################
 # Deploy Citadel as a stand alone service in a cluster
 ################################
-apiVersion: v1
-kind: Namespace
-metadata:
- name: istio-system
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:

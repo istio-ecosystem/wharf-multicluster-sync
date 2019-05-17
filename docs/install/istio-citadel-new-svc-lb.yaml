@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-standalone-citadel
+  namespace: istio-system
+spec:
+  type: ExternalName
+  externalName: __ROOTCA_HOST__
+  selector: {}

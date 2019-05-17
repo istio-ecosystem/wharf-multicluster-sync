@@ -1,0 +1,20 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: istio-standalone-citadel
+  namespace: istio-system
+spec:
+  ports:
+  - port: 8060
+    targetPort: __ROOTCA_PORT__
+---
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: istio-standalone-citadel
+  namespace: istio-system
+subsets:
+  - addresses:
+       - ip: __ROOTCA_HOST__
+    ports:
+       - port: __ROOTCA_PORT__

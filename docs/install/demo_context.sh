@@ -2,7 +2,8 @@
 
 # This script exports things, `source` it instead of executing it.
 
-if [ -z "$3" ]
+#MK#if [ -z "$3" ]
+if [ -z "$2" ]
   then
     echo "Syntax: source demo_context.sh <ca-ctx> <cluster1-ctx> <cluster2-ctx> [<cluster3-ctx>]"
     echo "where ca-ctx, cluster1-ctx and cluster2-ctx are the Kubeconfig context names for the relevent clusters."
@@ -11,10 +12,10 @@ fi
  
 export CLUSTER1_NAME=$2
 export CLUSTER2_NAME=$3
-export CLUSTER3_NAME=$4
+#MK#export CLUSTER3_NAME=$4
 export CLUSTER1=$2
 export CLUSTER2=$3
-export CLUSTER3=$4
+#MK#export CLUSTER3=$4
 export ROOTCA_NAME=$1
 export ROOTCA=$1
 
@@ -36,13 +37,13 @@ if ! kubectl --context $CLUSTER2 version --short=true ; then
    return	# This script is sourced, not executed, so don't exit
 fi
 
-if ! [ -z "$CLUSTER3" ]
-  then
-	echo Checking access to Cluster 3 with context $CLUSTER3
-	if ! kubectl --context $CLUSTER3 version --short=true ; then
-	   echo $CLUSTER3 not accessable
-	   return	# This script is sourced, not executed, so don't exit
-	fi
-fi
+#MK#if ! [ -z "$CLUSTER3" ]
+#MK#  then
+#MK#	echo Checking access to Cluster 3 with context $CLUSTER3
+#MK#	if ! kubectl --context $CLUSTER3 version --short=true ; then
+#MK#	   echo $CLUSTER3 not accessable
+#MK#	   return	# This script is sourced, not executed, so don't exit
+#MK#	fi
+#MK#fi
 
 echo Success setting environment for clusters
